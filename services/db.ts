@@ -47,8 +47,9 @@ export const getAcc = async (
 };
 
 export const deleteAcc = async (db: SQLiteDatabase) => {
-  const deleteQuery = 'DELETE FROM Accelerometer';
+  const deleteQuery = 'DROP TABLE Accelerometer';
   await db.executeSql(deleteQuery);
+  initAcc(db);
 };
 
 enablePromise(true);

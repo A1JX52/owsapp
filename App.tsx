@@ -1,11 +1,11 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {Button, SafeAreaView, Text, StyleSheet} from 'react-native';
+import {Button, SafeAreaView, Text, StyleSheet, Alert} from 'react-native';
 import {
   accelerometer,
   setUpdateIntervalForType,
   SensorTypes,
 } from 'react-native-sensors';
-import {connect, initAcc, addAcc, getAcc} from './services/db';
+import {connect, initAcc, addAcc, getAcc, deleteAcc} from './services/db';
 import {AccelerometerItem} from './models';
 
 function App(): React.JSX.Element {
@@ -41,6 +41,11 @@ function App(): React.JSX.Element {
     }
   };
 
+  const del = async () => {
+    const db = await connect();
+    await deleteAcc(db);
+  };
+
   useEffect(() => {
     setUpdateIntervalForType(SensorTypes.accelerometer, 200);
 
@@ -54,7 +59,16 @@ function App(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.cont}>
       <Text style={styles.txt}>{JSON.stringify(acc)}</Text>
-      <Button title="get latest item" onPress={() => get()} />
+      <Button title="get latest item" onPress={get} />
+      <Button
+        title="delete all items"
+        onPress={() => {
+          Alert.alert('confirm', 'are you sure you want to delete all items?', [
+            {text: 'cancel'},
+            {text: 'okay', onPress: del},
+          ]);
+        }}
+      />
     </SafeAreaView>
   );
 }
