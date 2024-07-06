@@ -5,6 +5,10 @@ import {
   setUpdateIntervalForType,
   SensorTypes,
 } from 'react-native-sensors';
+import RNFS from 'react-native-fs';
+// import DocumentPicker from 'react-native-document-picker';
+import Share from 'react-native-share';
+
 import {connect, initAcc, addAcc, getAcc, deleteAcc} from './services/db';
 import {AccelerometerItem} from './models';
 
@@ -56,10 +60,34 @@ function App(): React.JSX.Element {
     return () => sub.unsubscribe();
   }, []);
 
+  const exp = async () => {
+    try {
+      var path = RNFS.DocumentDirectoryPath + '/test.txt';
+      await RNFS.writeFile(path, 'Lorem ipsum dolor sit amet', 'utf8');
+
+      // const res = await DocumentPicker.pick({
+      //   type: [DocumentPicker.types.allFiles],
+      //   copyTo: 'documentDirectory'
+      // });
+      // await RNFS.copyFile(path, res[0].uri);
+      const opts = {
+        title: 'share log',
+        url: "file://${path}",
+        type: 'text/plain',
+      };
+      await Share.open(opts);
+    } catch (error) {
+      // if (!DocumentPicker.isCancel(err)) {
+        console.log(error);
+      // }
+    }
+  }
+
   return (
     <SafeAreaView style={styles.cont}>
       <Text style={styles.txt}>{JSON.stringify(acc)}</Text>
       <Button title="get latest item" onPress={get} />
+      <Button title="export items" onPress={exp}/>
       <Button
         title="delete all items"
         onPress={() => {

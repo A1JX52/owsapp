@@ -13,6 +13,7 @@ export const initAcc = async (db: SQLiteDatabase) => {
   const query = `
      CREATE TABLE IF NOT EXISTS Accelerometer (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
         x REAL,
         y REAL,
         z REAL
