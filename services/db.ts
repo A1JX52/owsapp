@@ -1,55 +1,94 @@
-import {
-  SQLiteDatabase,
-  enablePromise,
-  openDatabase,
-} from 'react-native-sqlite-storage';
+import SQLite from "react-native-sqlite-storage";
 import {AccelerometerItem} from '../models';
 
-export const connect = async () => {
-  return openDatabase({name: 'owsapp.db', location: 'default'});
-};
+export interface DatabaseAcc {
+  addAcc(item: AccelerometerItem): Promise<void>;
+  getAcc(): Promise<AccelerometerItem | null>;
+  deleteAcc(): Promise<void>;
+}
 
-export const initAcc = async (db: SQLiteDatabase) => {
-  const query = `
-     CREATE TABLE IF NOT EXISTS Accelerometer (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        x REAL,
-        y REAL,
-        z REAL
-     )
-  `;
-  await db.executeSql(query);
-};
+let dbInstance: SQLite.SQLiteDatabase | undefined;
 
-export const addAcc = async (db: SQLiteDatabase, item: AccelerometerItem) => {
-  const query = `
-     INSERT INTO Accelerometer (x, y, z)
-     VALUES (?, ?, ?)
-    `;
-  return db.executeSql(query, [item.x, item.y, item.z]);
-};
-
-export const getAcc = async (
-  db: SQLiteDatabase,
-): Promise<AccelerometerItem | null> => {
-  try {
-    const results = await db.executeSql(
-      'SELECT * FROM Accelerometer ORDER BY id DESC LIMIT 1;',
-    );
-    if (results.length > 0 && results[0].rows.length > 0) {
-      return results[0].rows.item(0);
-    }
-    return null;
-  } catch (error) {
-    console.error(error);
-    throw Error('failed to get latest item');
+async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (dbInstance !== undefined) {
+    return Promise.resolve(dbInstance);
   }
+  return open();
+}
+
+async function open(): Promise<SQLite.SQLiteDatabase> {
+  SQLite.enablePromise(true);
+
+  if (dbInstance) {
+    console.log('db already opened');
+    return dbInstance;
+  }
+
+  const db = await SQLite.openDatabase({
+    name: 'owsapp.db',
+    location: 'default',
+  });
+  console.log('db opened');
+
+  await init(db);
+
+  dbInstance = db;
+  return db;
+}
+
+async function init(db: SQLite.SQLiteDatabase): Promise<void> {
+  console.log('beginning db updates');
+
+  db.executeSql(`
+    CREATE TABLE IF NOT EXISTS Accelerometer (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      x REAL,
+      y REAL,
+      z REAL
+    );
+  `);
+}
+
+async function close(): Promise<void> {
+  if (dbInstance === undefined) {
+    console.log("db already closed");
+    return;
+  }
+  await dbInstance.close();
+  console.log("db closed");
+  dbInstance = undefined;
+}
+
+async function addAcc(item: AccelerometerItem): Promise<void> {
+  return getDatabase()
+    .then((db) => {
+      db.executeSql(`INSERT INTO Accelerometer (x, y, z) VALUES (?, ?, ?);`, [item.x, item.y, item.z])
+    });
 };
 
-export const deleteAcc = async (db: SQLiteDatabase) => {
-  const deleteQuery = 'DROP TABLE Accelerometer';
-  await db.executeSql(deleteQuery);
-  initAcc(db);
+async function getAcc(): Promise<AccelerometerItem | null> {
+  return getDatabase()
+    .then((db) =>
+      db.executeSql('SELECT * FROM Accelerometer ORDER BY id DESC LIMIT 1;')
+    )
+    .then(([results]) => {
+      if (results !== undefined && results.rows.length > 0) {
+        return results.rows.item(0);
+      }
+      return null;
+    });
 };
 
-enablePromise(true);
+async function deleteAcc(): Promise<void> {
+  return getDatabase()
+    .then((db) => {
+      db.executeSql('DROP TABLE Accelerometer');
+      init(db);
+    })
+};
+
+export const database: DatabaseAcc = {
+  addAcc,
+  getAcc,
+  deleteAcc,
+};
