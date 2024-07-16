@@ -1,12 +1,9 @@
 import React, {useState, useEffect} from 'react';
-import {Text, Button, View, Alert, StyleSheet} from 'react-native';
-import {
-  accelerometer,
-  setUpdateIntervalForType,
-  SensorTypes,
-} from 'react-native-sensors';
+import {Text, Button, View, Alert, StyleSheet, NativeModules, NativeEventEmitter} from 'react-native';
 import {AccelerometerItem} from '../models';
 import {useDatabase} from '../contexts/dbContext';
+
+const {AccelerometerModule} = NativeModules;
 
 const DevView = () => {
   const [acc, setAcc] = useState<AccelerometerItem>({x: 0, y: 0, z: 0});
@@ -15,15 +12,17 @@ const DevView = () => {
 
   useEffect(() => {
     if (!record) {
+      AccelerometerModule.stopService();
       return;
     }
-    setUpdateIntervalForType(SensorTypes.accelerometer, 200);
-
-    const sub = accelerometer.subscribe({
-      next: (item: AccelerometerItem) => db.addAcc(item),
-      error: (error: any) => console.error('reading sensor data failed', error),
+    AccelerometerModule.startService();
+    const eventEmitter = new NativeEventEmitter(AccelerometerModule);
+    let eventListener = eventEmitter.addListener('AccelerometerData', event => {
+      db.addAcc({x: event.x, y: event.y, z: event.z});
     });
-    return () => sub.unsubscribe();
+    return () => {
+      eventListener.remove();
+    };
   }, [record]);
     
   return (
