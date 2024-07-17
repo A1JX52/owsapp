@@ -6,7 +6,7 @@ import {useDatabase} from '../contexts/dbContext';
 const {AccelerometerModule} = NativeModules;
 
 const DevView = () => {
-  const [acc, setAcc] = useState<AccelerometerItem>({x: 0, y: 0, z: 0});
+  const [acc, setAcc] = useState<AccelerometerItem>({x: 0, y: 0, z: 0, timestamp: -1, id: -1});
   const [record, setRecord] = useState(false);
   const db = useDatabase();
 
@@ -17,21 +17,23 @@ const DevView = () => {
     }
     AccelerometerModule.startService();
     const eventEmitter = new NativeEventEmitter(AccelerometerModule);
-    let eventListener = eventEmitter.addListener('AccelerometerData', event => {
-      db.addAcc({x: event.x, y: event.y, z: event.z});
+    let eventListener = eventEmitter.addListener('AccelerometerData', (event: AccelerometerItem) => {
+      db.addAcc(event);
     });
     return () => {
       eventListener.remove();
     };
   }, [record]);
     
+  let d = new Date(acc.timestamp);
+
   return (
     <View>
       <Button title={record ? 'stop' : 'start'} onPress={() => setRecord(!record)}/>
-      <Text style={styles.txt}>{JSON.stringify(acc)}</Text>
+      <Text style={styles.txt}>{JSON.stringify(acc, undefined, 2) + '\n' + d.toLocaleTimeString('en-GB') + '.' + d.getMilliseconds()}</Text>
       <Button title='get latest item' onPress={async () => {
         let acc = await db.getAcc();
-        setAcc(acc ? acc : {x: 0, y: 0, z: 0});
+        setAcc(acc ? acc : {x: 0, y: 0, z: 0, timestamp: -1, id: -1});
       }}/>
       <Button
         title='delete all items'

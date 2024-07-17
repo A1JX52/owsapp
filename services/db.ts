@@ -44,7 +44,8 @@ async function init(db: SQLite.SQLiteDatabase): Promise<void> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       x REAL,
       y REAL,
-      z REAL
+      z REAL,
+      timestamp INTEGER
     );
   `);
 }
@@ -62,7 +63,7 @@ async function close(): Promise<void> {
 async function addAcc(item: AccelerometerItem): Promise<void> {
   return getDatabase()
     .then((db) => {
-      db.executeSql(`INSERT INTO Accelerometer (x, y, z) VALUES (?, ?, ?);`, [item.x, item.y, item.z])
+      db.executeSql(`INSERT INTO Accelerometer (x, y, z, timestamp) VALUES (?, ?, ?, ?);`, [item.x, item.y, item.z, item.timestamp])
     });
 };
 

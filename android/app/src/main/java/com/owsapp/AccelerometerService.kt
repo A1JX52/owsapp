@@ -59,13 +59,10 @@ class AccelerometerService : HeadlessJsTaskService(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             val timeMillis = System.currentTimeMillis() + (event.timestamp - SystemClock.elapsedRealtimeNanos()) / 1000000L
-            val date = Date(timeMillis)
-            val dateFormat = getDateFormat(applicationContext)
-            val timestamp = dateFormat.format(date)
 
             if (it.sensor.type == Sensor.TYPE_ACCELEROMETER) {
                 val map: WritableMap = Arguments.createMap()
-                map.putString("timestamp", timestamp)
+                map.putDouble("timestamp", timeMillis.toDouble())
                 map.putDouble("x", it.values[0].toDouble())
                 map.putDouble("y", it.values[1].toDouble())
                 map.putDouble("z", it.values[2].toDouble())
