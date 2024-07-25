@@ -3,5 +3,5 @@ export type AccelerometerItem = {
   y: number;
   z: number;
   timestamp: number;
-  [x: string | number | symbol]: unknown;
+  id: number;
 };

@@ -4,6 +4,7 @@ import {AccelerometerItem} from '../models';
 export interface DatabaseAcc {
   addAcc(item: AccelerometerItem): Promise<void>;
   getAcc(): Promise<AccelerometerItem | null>;
+  getSubsetAcc(offset: number, limit: number): Promise<AccelerometerItem[]>;
   deleteAcc(): Promise<void>;
 }
 
@@ -67,6 +68,21 @@ async function addAcc(item: AccelerometerItem): Promise<void> {
     });
 };
 
+async function getSubsetAcc(offset: number, limit: number): Promise<AccelerometerItem[]> {
+  return getDatabase()
+    .then((db) =>
+      db.executeSql(`SELECT * FROM Accelerometer ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`)
+    )
+    .then(([results]) => {
+      const items: AccelerometerItem[] = [];
+
+      for (let i = 0; i < results.rows.length; i++) {
+        items.push(results.rows.item(i))
+      }
+      return items;
+    });
+};
+
 async function getAcc(): Promise<AccelerometerItem | null> {
   return getDatabase()
     .then((db) =>
@@ -91,5 +107,6 @@ async function deleteAcc(): Promise<void> {
 export const database: DatabaseAcc = {
   addAcc,
   getAcc,
+  getSubsetAcc,
   deleteAcc,
 };

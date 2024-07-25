@@ -2,6 +2,7 @@ import React, {useState, useEffect} from 'react';
 import {Text, Button, View, Alert, StyleSheet, NativeModules, NativeEventEmitter} from 'react-native';
 import {AccelerometerItem} from '../models';
 import {useDatabase} from '../contexts/dbContext';
+import DataList from './DataList';
 
 const {AccelerometerModule} = NativeModules;
 
@@ -44,6 +45,7 @@ const DevView = () => {
           ]);
         }}
       />
+      <DataList/>
     </View>
   );
 };
