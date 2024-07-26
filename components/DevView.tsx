@@ -2,7 +2,6 @@ import React, {useState, useEffect} from 'react';
 import {Text, Button, View, Alert, StyleSheet, NativeModules, NativeEventEmitter} from 'react-native';
 import {AccelerometerItem} from '../models';
 import {useDatabase} from '../contexts/dbContext';
-import DataList from './DataList';
 
 const {AccelerometerModule} = NativeModules;
 
@@ -29,7 +28,7 @@ const DevView = () => {
   let d = new Date(acc.timestamp);
 
   return (
-    <View>
+    <View style={styles.cont}>
       <Button title={record ? 'stop' : 'start'} onPress={() => setRecord(!record)}/>
       <Text style={styles.txt}>{JSON.stringify(acc, undefined, 2) + '\n' + d.toLocaleTimeString('en-GB') + '.' + d.getMilliseconds()}</Text>
       <Button title='get latest item' onPress={async () => {
@@ -45,7 +44,6 @@ const DevView = () => {
           ]);
         }}
       />
-      <DataList/>
     </View>
   );
 };

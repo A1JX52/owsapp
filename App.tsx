@@ -1,31 +1,38 @@
 import React from 'react';
-import {SafeAreaView, StyleSheet} from 'react-native';
+import { Text } from 'react-native';
 import {DatabaseProvider} from './contexts/dbContext';
 import DevView from './components/DevView';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import DataList from './components/DataList';
 
-function App(): React.JSX.Element {
+const Tab = createBottomTabNavigator();
+
+function DevTabs() {
   return (
-    <SafeAreaView style={styles.cont}>
-      <DatabaseProvider>
-        <DevView/>
-      </DatabaseProvider>
-    </SafeAreaView>
+    <Tab.Navigator>
+      <Tab.Screen name='DevView' component={DevView} />
+      <Tab.Screen name='DataList' component={DataList} />
+    </Tab.Navigator>
   );
 }
 
-const styles = StyleSheet.create({
-  cont: {
-    flex: 1,
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  txt: {
-    color: 'red',
-    fontWeight: 'bold',
-    fontSize: 20,
-  },
-});
+function MainTabs() {
+  return (
+    <Text>hello world!</Text>
+  );
+}
+
+function App(): React.JSX.Element {
+  const isDevMode = true;
+  
+  return (
+    <NavigationContainer>
+      <DatabaseProvider>
+        {isDevMode ? <DevTabs /> : <MainTabs />}
+      </DatabaseProvider>
+    </NavigationContainer>
+  );
+}
 
 export default App;
