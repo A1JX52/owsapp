@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FlatList, Text, View, ActivityIndicator, ListRenderItem } from 'react-native';
+import { FlatList, Text, ActivityIndicator } from 'react-native';
 import {AccelerometerItem} from '../models';
 import { useDatabase } from '../contexts/dbContext';
+import DataListItem from './DataListItem';
 
 const DataList = () => {
     const [loading, setLoading] = useState(false);
@@ -28,20 +29,6 @@ const DataList = () => {
       fetchPage(0);
     }, []);
   
-    const renderItem: ListRenderItem<AccelerometerItem> = ({ item }) => {
-      let d = new Date(item.timestamp);
-
-      return (
-      <View>
-        <Text>id: {item.id}</Text>
-        <Text>x: {item.x}</Text>
-        <Text>y: {item.y}</Text>
-        <Text>z: {item.z}</Text>
-        <Text>timestamp: {d.toLocaleTimeString('en-GB') + '.' + d.getMilliseconds()}</Text>
-      </View>
-      );
-    };
-
     const onRefresh = () => {
       setItems([]);
       fetchPage(0);
@@ -50,13 +37,14 @@ const DataList = () => {
     return (
       <FlatList
         data={items}
-        renderItem={renderItem}
+        renderItem={({ item }) => <DataListItem item={ item } />}
         contentContainerStyle={{ gap: 20 }}
         onEndReached={() => fetchPage(nextPage)}
         onEndReachedThreshold={1}
         ListFooterComponent={() => loading && <ActivityIndicator />}
         refreshing={loading}
         onRefresh={onRefresh}
+        ListEmptyComponent={<Text>there are no recordings</Text>}
       />
     );
 };
