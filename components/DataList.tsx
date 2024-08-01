@@ -41,7 +41,7 @@ const DataList = () => {
   
     return (
       <View>
-        <FrequencyChart items={allItems} />
+        <FrequencyChart items={allItems.reverse()} />
         <FlatList
           data={items}
           renderItem={({ item }) => <DataListItem item={ item } />}
