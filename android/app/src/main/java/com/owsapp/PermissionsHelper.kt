@@ -13,7 +13,7 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 
 class PermissionsHelper : Activity() {
-    private val tag = AccelerometerModule::class.java.name
+    private val tag = PermissionsHelper::class.java.name
 
     private lateinit var mService: AccelerometerService
     private var mBound: Boolean = false

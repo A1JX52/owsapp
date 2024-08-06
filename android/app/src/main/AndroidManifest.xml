@@ -36,5 +36,6 @@
             android:enabled="true"
             android:foregroundServiceType="dataSync|location"
             android:exported="false" />
+      <service android:name=".EventService" />
     </application>
 </manifest>

@@ -1,12 +1,16 @@
 package com.owsapp
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.UiThreadUtil
 
 class AccelerometerModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val tag = AccelerometerModule::class.java.name
@@ -16,6 +20,7 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
     @ReactMethod
     fun startService() {
         if (AccelerometerService.IS_RUNNING) return
+        handleLocationPermissions()
         Log.i(tag, "starting background service")
         val intent = Intent(reactContext, AccelerometerService::class.java)
         ContextCompat.startForegroundService(reactContext, intent)
@@ -35,5 +40,41 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
 
     @ReactMethod
     fun removeListeners(count: Int) {
+    }
+
+    private fun handleLocationPermissions() {
+        Log.i(tag, "test if access_fine_location granted")
+
+        if (!reactContext.hasCurrentActivity()) {
+            Log.w(tag, "currently only headless js available")
+            return
+        }
+        val activity = reactContext.currentActivity
+
+        when {
+            ContextCompat.checkSelfPermission(reactContext, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
+                Log.i(tag, "access_fine_location already granted")
+            }
+            ActivityCompat.shouldShowRequestPermissionRationale(activity!!, android.Manifest.permission.ACCESS_FINE_LOCATION) -> {
+//                explain why permission is required for feature
+
+                UiThreadUtil.runOnUiThread {
+                    AlertDialog.Builder(activity)
+                        .setTitle("Location Permission Needed")
+                        .setMessage("This app requires access to your location to provide location-based services.")
+                        .setPositiveButton("OK") { _, _ ->
+                            val intent = Intent(activity, PermissionsHelper::class.java)
+                            activity.startActivity(intent)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .create()
+                        .show()
+                }
+            }
+            else -> {
+                val intent = Intent(activity, PermissionsHelper::class.java)
+                activity.startActivity(intent)
+            }
+        }
     }
 }

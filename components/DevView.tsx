@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Text, Button, View, Alert, StyleSheet, NativeModules, NativeEventEmitter} from 'react-native';
+import { Text, Button, View, Alert, StyleSheet, NativeModules } from 'react-native';
 import {AccelerometerItem} from '../models';
 import {useDatabase} from '../contexts/dbContext';
 
@@ -16,13 +16,6 @@ const DevView = () => {
       return;
     }
     AccelerometerModule.startService();
-    const eventEmitter = new NativeEventEmitter(AccelerometerModule);
-    let eventListener = eventEmitter.addListener('AccelerometerData', (event: AccelerometerItem) => {
-      db.addAcc(event);
-    });
-    return () => {
-      eventListener.remove();
-    };
   }, [record]);
     
   let d = new Date(acc.timestamp);

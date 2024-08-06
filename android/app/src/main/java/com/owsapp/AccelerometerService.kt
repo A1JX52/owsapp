@@ -1,9 +1,9 @@
 package com.owsapp
 
 import android.annotation.SuppressLint
+import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -14,19 +14,14 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
-import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.core.app.ServiceCompat
-import androidx.core.content.ContextCompat
 import com.facebook.react.HeadlessJsTaskService
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.WritableMap
-import com.facebook.react.modules.core.DeviceEventManagerModule
 
-class AccelerometerService : HeadlessJsTaskService(), SensorEventListener, LocationListener {
+class AccelerometerService : Service(), SensorEventListener, LocationListener {
     private val tag = AccelerometerService::class.java.name
 
     private lateinit var sensorManager: SensorManager
@@ -48,36 +43,6 @@ class AccelerometerService : HeadlessJsTaskService(), SensorEventListener, Locat
         accelerometer ?: Log.e(tag, "there is no accelerometer sensor")
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        Log.i(tag, "test if access_fine_location granted")
-
-        val reactContext = reactNativeHost.reactInstanceManager.currentReactContext
-        val activity = reactContext?.currentActivity
-
-        when {
-            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
-                Log.i(tag, "access_fine_location already granted")
-                requestLocationUpdates()
-                return
-            }
-            ActivityCompat.shouldShowRequestPermissionRationale(activity!!, android.Manifest.permission.ACCESS_FINE_LOCATION) -> {
-//                explain why permission is required for feature
-
-                AlertDialog.Builder(activity)
-                    .setTitle("Location Permission Needed")
-                    .setMessage("This app requires access to your location to provide location-based services.")
-                    .setPositiveButton("OK") { _, _ ->
-                        val intent = Intent(activity, PermissionsHelper::class.java)
-                        activity.startActivity(intent)
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .create()
-                    .show()
-            }
-            else -> {
-                val intent = Intent(activity, PermissionsHelper::class.java)
-                activity.startActivity(intent)
-            }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -107,13 +72,13 @@ class AccelerometerService : HeadlessJsTaskService(), SensorEventListener, Locat
             val timeMillis = System.currentTimeMillis() + (event.timestamp - SystemClock.elapsedRealtimeNanos()) / 1000000L
 
             if (it.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-                val map: WritableMap = Arguments.createMap()
-                map.putDouble("timestamp", timeMillis.toDouble())
-                map.putDouble("x", it.values[0].toDouble())
-                map.putDouble("y", it.values[1].toDouble())
-                map.putDouble("z", it.values[2].toDouble())
+                val bundle = Bundle()
+                bundle.putDouble("timestamp", timeMillis.toDouble())
+                bundle.putDouble("x", it.values[0].toDouble())
+                bundle.putDouble("y", it.values[1].toDouble())
+                bundle.putDouble("z", it.values[2].toDouble())
 
-                sendEvent("AccelerometerData", map)
+                sendEvent("AccelerometerData", bundle)
             }
         }
     }
@@ -122,12 +87,12 @@ class AccelerometerService : HeadlessJsTaskService(), SensorEventListener, Locat
     }
 
     override fun onLocationChanged(location: Location) {
-        val map: WritableMap = Arguments.createMap()
-        map.putDouble("timestamp", location.time.toDouble())
-        map.putDouble("latitude", location.latitude)
-        map.putDouble("longitude", location.longitude)
+        val bundle = Bundle()
+        bundle.putDouble("timestamp", location.time.toDouble())
+        bundle.putDouble("latitude", location.latitude)
+        bundle.putDouble("longitude", location.longitude)
 
-        sendEvent("LocationData", map)
+        sendEvent("LocationData", bundle)
     }
 
     //permission check handled by caller
@@ -152,16 +117,13 @@ class AccelerometerService : HeadlessJsTaskService(), SensorEventListener, Locat
         }
     }
 
-    fun sendEvent(eventName: String, params: WritableMap?) {
-        var reactContext = reactNativeHost.reactInstanceManager.currentReactContext
-
-        reactContext?.let {
-            it
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit(eventName, params)
-            return;
-        }
-        Log.w(tag, "react context could not be determined")
+    fun sendEvent(eventName: String, params: Bundle?) {
+        val context = applicationContext
+        val intent = Intent(context, EventService::class.java)
+        intent.putExtra("eventName", eventName)
+        intent.putExtra("params", params ?: Bundle())
+        context.startService(intent)
+        HeadlessJsTaskService.acquireWakeLockNow(context)
     }
 
     inner class LocalBinder : Binder() {
