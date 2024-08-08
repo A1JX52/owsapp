@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FlatList, Text, ActivityIndicator, View } from 'react-native';
+import { FlatList, Text, ActivityIndicator, View, Button, LayoutChangeEvent } from 'react-native';
 import {AccelerometerItem} from '../models';
 import { useDatabase } from '../contexts/dbContext';
 import DataListItem from './DataListItem';
@@ -10,9 +10,12 @@ const DataList = () => {
   const [items, setItems] = useState<AccelerometerItem[]>([]);
   const [nextPage, setNextPage] = useState(0);
   const [allItems, setAllItems] = useState<AccelerometerItem[]>([]);
+  const [itemHeight, setItemHeight] = useState(-1);
+  const [scrollToEnd, setScrollToEnd] = useState(false);
 
   const db = useDatabase();
   const limit = 15;
+  const listRef = React.useRef<FlatList>(null!);
 
   const fetchPage = async (page: number) => {
     if (loading) return;
@@ -28,8 +31,18 @@ const DataList = () => {
   };
 
   useEffect(() => {
+    (async () => {
+      setAllItems(await db.getSubsetAcc(0, -1));
+    })();
     fetchPage(0);
   }, []);
+
+  useEffect(() => {
+    if (scrollToEnd && listRef.current) {
+      listRef.current.scrollToEnd();
+      setScrollToEnd(false);
+    }
+  }, [scrollToEnd, items]);
 
   const onRefresh = () => {
     setItems([]);
@@ -39,19 +52,43 @@ const DataList = () => {
     fetchPage(0);
   }
 
+  const onItemLayout = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    setItemHeight(height);
+  };
+
+  const getItemLayout = (data: ArrayLike<any> | null | undefined, index: number) => ({
+    length: itemHeight,
+    offset: (itemHeight + 20) * index + 20,
+    index,
+  });
+
   return (
     <View style={{ flex: 1 }}>
-      <FrequencyChart items={allItems.reverse()} />
+      <FrequencyChart items={[...allItems].reverse()} />
+      <Button title='scroll to end' onPress={() => {
+        setNextPage(allItems.length);
+        setItems(allItems);
+        setScrollToEnd(true);
+      }} />
       <FlatList
         data={items}
-        renderItem={({ item }) => <DataListItem item={ item } />}
+        keyExtractor={item => String(item.id)}
+        renderItem={({ item }: { item: AccelerometerItem }) =>
+          <DataListItem
+            item={ item }
+            onLayout={ item.id != allItems[0].id ? undefined : onItemLayout }
+          />
+        }
         contentContainerStyle={{ gap: 20 }}
         onEndReached={() => fetchPage(nextPage)}
         onEndReachedThreshold={1}
+        getItemLayout={getItemLayout}
         ListFooterComponent={() => loading && <ActivityIndicator />}
         refreshing={loading}
         onRefresh={onRefresh}
         ListEmptyComponent={<Text>there are no recordings</Text>}
+        ref={listRef}
       />
     </View>
   );
