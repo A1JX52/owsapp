@@ -22,7 +22,13 @@ const DevView = () => {
 
   return (
     <View style={styles.cont}>
-      <Button title={record ? 'stop' : 'start'} onPress={() => setRecord(!record)}/>
+      <Button title={record ? 'stop' : 'start'} onPress={async () => {
+        if (!record) {
+          const result = await AccelerometerModule.handleLocationPermissions();
+          if (result !== 'PERMISSION_GRANTED') return
+        }
+        setRecord(!record);
+      }}/>
       <Text style={styles.txt}>{JSON.stringify(acc, undefined, 2) + '\n' + d.toLocaleTimeString('en-GB') + '.' + d.getMilliseconds()}</Text>
       <Button title='get latest item' onPress={async () => {
         let acc = await db.getAcc();

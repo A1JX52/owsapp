@@ -33,7 +33,6 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
     companion object {
         var IS_RUNNING = false
         const val NOTIFICATION_ID = 1
-        const val REQUEST_CODE_LOCATION = 1
     }
 
     override fun onCreate() {
@@ -45,12 +44,16 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
     }
 
+    @SuppressLint("MissingPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(tag, "received start foreground intent")
         startAsForegroundService()
         accelerometer?.also { accel ->
             sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_NORMAL)
         }
+//        permission check handled by different native module method
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this)
+
         IS_RUNNING = true
         return START_STICKY
     }
@@ -95,12 +98,6 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         sendEvent("LocationData", bundle)
     }
 
-    //permission check handled by caller
-    @SuppressLint("MissingPermission")
-    fun requestLocationUpdates() {
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this)
-    }
-
     private fun startAsForegroundService() {
         NotificationsHelper.createNotificationChannel(this)
 
@@ -117,7 +114,7 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         }
     }
 
-    fun sendEvent(eventName: String, params: Bundle?) {
+    private fun sendEvent(eventName: String, params: Bundle?) {
         val context = applicationContext
         val intent = Intent(context, EventService::class.java)
         intent.putExtra("eventName", eventName)

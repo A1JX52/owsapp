@@ -2,11 +2,12 @@ package com.owsapp
 
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
+import androidx.activity.result.ActivityResultCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -20,7 +21,6 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
     @ReactMethod
     fun startService() {
         if (AccelerometerService.IS_RUNNING) return
-        handleLocationPermissions()
         Log.i(tag, "starting background service")
         val intent = Intent(reactContext, AccelerometerService::class.java)
         ContextCompat.startForegroundService(reactContext, intent)
@@ -42,18 +42,28 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
     fun removeListeners(count: Int) {
     }
 
-    private fun handleLocationPermissions() {
+    @ReactMethod
+    fun handleLocationPermissions(promise: Promise) {
         Log.i(tag, "test if access_fine_location granted")
 
         if (!reactContext.hasCurrentActivity()) {
             Log.w(tag, "currently only headless js available")
+            promise.reject("E_LIFECYCLE", "cannot reach MainActivity")
             return
         }
-        val activity = reactContext.currentActivity
+        val activity = reactContext.currentActivity as MainActivity
+        activity.mActivityResultCallback = ActivityResultCallback { result ->
+            result?.data?.extras?.getString("result")?.let {
+                promise.resolve(it);
+                return@ActivityResultCallback
+            }
+            promise.reject("E_INVALID_ARGUMENT", "PermissionsHelper returned invalid result")
+        }
 
         when {
             ContextCompat.checkSelfPermission(reactContext, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
                 Log.i(tag, "access_fine_location already granted")
+                promise.resolve(PermissionsHelper.GRANTED)
             }
             ActivityCompat.shouldShowRequestPermissionRationale(activity!!, android.Manifest.permission.ACCESS_FINE_LOCATION) -> {
 //                explain why permission is required for feature
@@ -64,7 +74,7 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
                         .setMessage("This app requires access to your location to provide location-based services.")
                         .setPositiveButton("OK") { _, _ ->
                             val intent = Intent(activity, PermissionsHelper::class.java)
-                            activity.startActivity(intent)
+                            activity.mStartForResult.launch(intent)
                         }
                         .setNegativeButton("Cancel", null)
                         .create()
@@ -73,7 +83,7 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
             }
             else -> {
                 val intent = Intent(activity, PermissionsHelper::class.java)
-                activity.startActivity(intent)
+                activity.mStartForResult.launch(intent)
             }
         }
     }
