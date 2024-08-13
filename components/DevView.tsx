@@ -2,32 +2,27 @@ import React, {useState, useEffect} from 'react';
 import { Text, Button, View, Alert, StyleSheet, NativeModules } from 'react-native';
 import {AccelerometerItem} from '../models';
 import {useDatabase} from '../contexts/dbContext';
+import useServiceStore from '../serviceStore'
 
 const {AccelerometerModule} = NativeModules;
 
 const DevView = () => {
   const [acc, setAcc] = useState<AccelerometerItem>({x: 0, y: 0, z: 0, timestamp: -1, id: -1});
-  const [record, setRecord] = useState(false);
+  const isRunning = useServiceStore((state) => state.isRunning);
   const db = useDatabase();
 
-  useEffect(() => {
-    if (!record) {
-      AccelerometerModule.stopService();
-      return;
-    }
-    AccelerometerModule.startService();
-  }, [record]);
-    
   let d = new Date(acc.timestamp);
 
   return (
     <View style={styles.cont}>
-      <Button title={record ? 'stop' : 'start'} onPress={async () => {
-        if (!record) {
+      <Button title={isRunning ? 'stop' : 'start'} onPress={async () => {
+        if (isRunning) {
+          AccelerometerModule.stopService();
+        } else {
           const result = await AccelerometerModule.handleLocationPermissions();
           if (result !== 'PERMISSION_GRANTED') return
+          AccelerometerModule.startService();
         }
-        setRecord(!record);
       }}/>
       <Text style={styles.txt}>{JSON.stringify(acc, undefined, 2) + '\n' + d.toLocaleTimeString('en-GB') + '.' + d.getMilliseconds()}</Text>
       <Button title='get latest item' onPress={async () => {

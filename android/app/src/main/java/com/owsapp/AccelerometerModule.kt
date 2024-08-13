@@ -20,7 +20,6 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
 
     @ReactMethod
     fun startService() {
-        if (AccelerometerService.IS_RUNNING) return
         Log.i(tag, "starting background service")
         val intent = Intent(reactContext, AccelerometerService::class.java)
         ContextCompat.startForegroundService(reactContext, intent)
@@ -28,7 +27,6 @@ class AccelerometerModule(private val reactContext: ReactApplicationContext) : R
 
     @ReactMethod
     fun stopService() {
-        if (!AccelerometerService.IS_RUNNING) return
         Log.i(tag, "stopping background service");
         val intent = Intent(reactContext, AccelerometerService::class.java)
         reactContext.stopService(intent)

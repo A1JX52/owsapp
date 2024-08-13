@@ -31,10 +31,10 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
     private val binder = LocalBinder()
 
     companion object {
-        var IS_RUNNING = false
         const val NOTIFICATION_ID = 1
     }
 
+    @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate();
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -42,11 +42,7 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         accelerometer ?: Log.e(tag, "there is no accelerometer sensor")
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    }
 
-    @SuppressLint("MissingPermission")
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(tag, "received start foreground intent")
         startAsForegroundService()
         accelerometer?.also { accel ->
             sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_NORMAL)
@@ -54,7 +50,13 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
 //        permission check handled by different native module method
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this)
 
-        IS_RUNNING = true
+        val bundle = Bundle()
+        bundle.putBoolean("running", true)
+        sendEvent("AccelerometerRunning", bundle)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(tag, "received start foreground intent")
         return START_STICKY
     }
 
@@ -63,9 +65,12 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         Log.i(tag, "received stop foreground intent")
         sensorManager.unregisterListener(this)
         locationManager.removeUpdates(this)
+
+        val bundle = Bundle()
+        bundle.putBoolean("running", false)
+        sendEvent("AccelerometerRunning", bundle)
+
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
-        stopSelf()
-        IS_RUNNING = false
 
         super.onDestroy()
     }
