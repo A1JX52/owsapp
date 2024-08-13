@@ -16,6 +16,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.ServiceCompat
@@ -23,6 +24,8 @@ import com.facebook.react.HeadlessJsTaskService
 
 class AccelerometerService : Service(), SensorEventListener, LocationListener {
     private val tag = AccelerometerService::class.java.name
+
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
@@ -37,6 +40,14 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate();
+
+        wakeLock =
+            (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+                newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AccelerometerService::lock").apply {
+                    acquire()
+                }
+            }
+
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         accelerometer ?: Log.e(tag, "there is no accelerometer sensor")
@@ -45,7 +56,7 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
 
         startAsForegroundService()
         accelerometer?.also { accel ->
-            sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, accel, 100000)
         }
 //        permission check handled by different native module method
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this)
@@ -72,6 +83,11 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
 
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
 
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
         super.onDestroy()
     }
 
