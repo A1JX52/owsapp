@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, Text, ActivityIndicator, View, Button, LayoutChangeEvent } from 'react-native';
-import {AccelerometerItem} from '../models';
+import { AccelerometerItem, DataPoint } from '../models';
 import { useDatabase } from '../contexts/dbContext';
 import DataListItem from './DataListItem';
 import FrequencyChart from './FrequencyChart';
@@ -63,9 +63,31 @@ const DataList = () => {
     index,
   });
 
+  const buildFrequencyPoints = (items: AccelerometerItem[]): DataPoint[] => {
+    const groupedData: { [key: number]: number } = {};
+  
+    items.forEach((item: AccelerometerItem) => {
+      const date = new Date(item.timestamp);
+      date.setMilliseconds(0);
+      const minute = date.getTime();
+  
+      if (!groupedData[minute]) {
+        groupedData[minute] = 0;
+      }
+      groupedData[minute]++;
+    });
+  
+    return Object.entries(groupedData).map(([timestamp, count]) => ({
+      date: +timestamp,
+      value: count
+    }));
+  };
+
+  const frequencyPoints = useMemo(() => buildFrequencyPoints([...allItems].reverse()), [allItems]);
+
   return (
     <View style={{ flex: 1 }}>
-      <FrequencyChart items={[...allItems].reverse()} />
+      <FrequencyChart points={frequencyPoints} />
       <Button title='scroll to end' onPress={() => {
         setNextPage(allItems.length);
         setItems(allItems);

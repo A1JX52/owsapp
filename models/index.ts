@@ -5,3 +5,8 @@ export type AccelerometerItem = {
   timestamp: number;
   id: number;
 };
+
+export type DataPoint = {
+  date: number,
+  value: number,
+};

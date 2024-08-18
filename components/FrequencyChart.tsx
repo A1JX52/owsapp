@@ -3,38 +3,13 @@ import { View, StyleSheet, Text, LayoutChangeEvent } from 'react-native';
 import { Skia, Canvas, Group, Path, ColorShader, Circle } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { interpolateNumber } from 'd3-interpolate'
-import { AccelerometerItem } from '../models';
+import { DataPoint } from '../models';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, runOnJS } from 'react-native-reanimated';
 
 const PADDING = 16;
 
-interface DataPoint {
-  date: number,
-  value: number,
-}
-
-const buildPoints = (items: AccelerometerItem[]): DataPoint[] => {
-  const groupedData: { [key: number]: number } = {};
-
-  items.forEach((item: AccelerometerItem) => {
-    const date = new Date(item.timestamp);
-    date.setMilliseconds(0);
-    const minute = date.getTime();
-
-    if (!groupedData[minute]) {
-      groupedData[minute] = 0;
-    }
-    groupedData[minute]++;
-  });
-
-  return Object.entries(groupedData).map(([timestamp, count]) => ({
-    date: +timestamp,
-    value: count
-  }));
-};
-
-const FrequencyChart = ({ items }: { items: AccelerometerItem[] }) => {
+const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const [dimension, setDimension] = useState({width: 0, height: 0});
   const [getYForX, setGetYForX] = useState(() => (x: number) => {'worklet';});
   const [value, setValue] = useState(-1);
@@ -93,8 +68,7 @@ const FrequencyChart = ({ items }: { items: AccelerometerItem[] }) => {
     return path;
   };
 
-  const points = useMemo(() => buildPoints(items), [items, dimension]);
-  const path = useMemo(() => buildPath(points), [points]);
+  const path = useMemo(() => buildPath(points), [points, dimension]);
   useEffect(() => getYForX(translateX.value), [path]);
   
   const gesture = Gesture.Pan()
