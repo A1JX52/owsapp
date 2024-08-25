@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Text, LayoutChangeEvent } from 'react-native';
-import { Skia, Canvas, Group, Path, ColorShader, Circle } from '@shopify/react-native-skia';
+import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { interpolateNumber } from 'd3-interpolate'
 import { DataPoint } from '../models';
@@ -13,6 +13,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const [dimension, setDimension] = useState({width: 0, height: 0});
   const [getYForX, setGetYForX] = useState(() => (x: number) => {'worklet';});
   const [value, setValue] = useState(-1);
+  const [yOrigin, setYOrigin] = useState(-1);
 
   const handleCanvasLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -65,6 +66,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
       'worklet';
       runOnJS(wrapper)(x);
     });
+    setYOrigin(yScale(0));
     return path;
   };
 
@@ -91,6 +93,14 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
       <GestureDetector gesture={gesture}>
         <Canvas style={{ flex: 1 }} onLayout={handleCanvasLayout}>
           <Group>
+            <Path
+              path={`M 0 ${yOrigin} L ${dimension.width} ${yOrigin}`}
+              color='grey'
+              style='stroke'
+              strokeWidth={2}
+            >
+              <DashPathEffect intervals={[6, 6]} />
+            </Path>
             <Path
               path={path}
               style='stroke'
