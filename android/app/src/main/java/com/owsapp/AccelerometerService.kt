@@ -49,14 +49,14 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
             }
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
         accelerometer ?: Log.e(tag, "there is no accelerometer sensor")
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         startAsForegroundService()
         accelerometer?.also { accel ->
-            sensorManager.registerListener(this, accel, 100000)
+            sensorManager.registerListener(this, accel, 10000)
         }
 //        permission check handled by different native module method
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this)
@@ -95,7 +95,7 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
         event?.let {
             val timeMillis = System.currentTimeMillis() + (event.timestamp - SystemClock.elapsedRealtimeNanos()) / 1000000L
 
-            if (it.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            if (it.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
                 val bundle = Bundle()
                 bundle.putDouble("timestamp", timeMillis.toDouble())
                 bundle.putDouble("x", it.values[0].toDouble())
