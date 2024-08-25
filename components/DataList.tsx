@@ -4,6 +4,7 @@ import { AccelerometerItem, DataPoint } from '../models';
 import { useDatabase } from '../contexts/dbContext';
 import DataListItem from './DataListItem';
 import FrequencyChart from './FrequencyChart';
+import WaveHeightFilter from '../services/WaveHeightFilter';
 
 const DataList = () => {
   const [loading, setLoading] = useState(false);
@@ -85,8 +86,21 @@ const DataList = () => {
 
   const frequencyPoints = useMemo(() => buildFrequencyPoints([...allItems].reverse()), [allItems]);
 
+  const buildAccelerationPoints = (items: AccelerometerItem[]): DataPoint[] => {
+    if (!items.length) return [];
+    const observations = items.map(item => [item.z]);
+    const result = (new WaveHeightFilter(observations)).filterAll();
+    return result.map(([cumsum, position, velocity], index) => ({
+      date: index * WaveHeightFilter.dT,
+      value: position,
+    }));
+  }
+
+  const accelerationPoints = useMemo(() => buildAccelerationPoints([...allItems].reverse()), [allItems]);
+
   return (
     <View style={{ flex: 1 }}>
+      <FrequencyChart points={accelerationPoints} />
       <FrequencyChart points={frequencyPoints} />
       <Button title='scroll to end' onPress={() => {
         setNextPage(allItems.length);
