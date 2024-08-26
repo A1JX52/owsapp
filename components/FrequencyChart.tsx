@@ -6,6 +6,7 @@ import { interpolateNumber } from 'd3-interpolate'
 import { DataPoint } from '../models';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useSharedValue, runOnJS } from 'react-native-reanimated';
+import { getMinMax } from '../services/helper';
 
 const PADDING = 16;
 
@@ -32,11 +33,11 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     const dates = data.map(pt => pt.date);
   
     const xScale = scaleLinear()
-      .domain([Math.min(...dates), Math.max(...dates)])
+      .domain([dates[0], dates[dates.length - 1]])
       .range([PADDING, dimension.width - PADDING]);
   
     const yScale = scaleLinear()
-      .domain([Math.min(...values), Math.max(...values)])
+      .domain(Object.values(getMinMax(values)))
       .range([dimension.height - PADDING, PADDING]);
   
     path.moveTo(xScale(data[0].date), yScale(data[0].value));
