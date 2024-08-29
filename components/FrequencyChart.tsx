@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, StyleSheet, Text, LayoutChangeEvent } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, StyleSheet, Text, LayoutChangeEvent, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { interpolateNumber } from 'd3-interpolate'
 import { DataPoint } from '../models';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { GestureDetector, Gesture, ScrollView } from 'react-native-gesture-handler';
 import { useSharedValue, runOnJS } from 'react-native-reanimated';
 import { getMinMax } from '../services/helper';
 
@@ -22,7 +22,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   };
 
   const translateX = useSharedValue(PADDING);
-  const translateY = useSharedValue(40);
+  const translateY = useSharedValue(-40);
 
   const buildPath = (data: DataPoint[]) => {
     const path = Skia.Path.Make();
@@ -34,7 +34,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   
     const xScale = scaleLinear()
       .domain([dates[0], dates[dates.length - 1]])
-      .range([PADDING, dimension.width - PADDING]);
+      .range([PADDING, dimension.width - PADDING]); // PADDING because strokeWidth may exceed canvas at edge
   
     const yScale = scaleLinear()
       .domain(Object.values(getMinMax(values)))
@@ -60,7 +60,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
           return;
         }
       }
-      translateY.value = 40;
+      translateY.value = -40;
     };
 
     setGetYForX(() => (x: number) => {
@@ -74,46 +74,73 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const path = useMemo(() => buildPath(points), [points, dimension]);
   useEffect(() => getYForX(translateX.value), [path]);
   
-  const gesture = Gesture.Pan()
-    .onChange((pos) => {
-      const newTranslateX = translateX.value + pos.changeX;
+  const scrollRef = useRef<ScrollView>(null);
+  const [scale, setScale] = useState(1);
+  const oldScale = useSharedValue(1);
 
-      if (newTranslateX > dimension.width - PADDING) {
-        translateX.value = dimension.width - PADDING;
-      } else if (newTranslateX < PADDING) {
-        translateX.value = PADDING;
-      } else {
-        translateX.value += pos.changeX;
+  const pinch = Gesture.Pinch()
+    .blocksExternalGesture(scrollRef)
+    .onBegin((event) => {
+      oldScale.value = scale;
+    })
+    .onUpdate((event) => {
+      runOnJS(setScale)(Math.max(oldScale.value * event.scale, 1));
+    })
+    .onEnd((event) => {
+      if (oldScale.value * event.scale < 1) {
+        event.scale = 1 / oldScale.value;
       }
-      getYForX(translateX.value);
+      runOnJS(setDimension)({
+        width: dimension.width * event.scale,
+        height: dimension.height,
+      });
     });
 
+  
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = event.nativeEvent.contentSize.width;
+    let x = Math.min(Math.max(0, event.nativeEvent.contentOffset.x), width); // values can be out of bounds because of overScroll caused by inertia
+    x += PADDING;
+    translateX.value = x;
+    getYForX(x);
+  }
+
   return (
-    <View style={styles.cont}>
-      <Text style={styles.txt}>{value}</Text>
-      <GestureDetector gesture={gesture}>
-        <Canvas style={{ flex: 1 }} onLayout={handleCanvasLayout}>
-          <Group>
-            <Path
-              path={`M 0 ${yOrigin} L ${dimension.width} ${yOrigin}`}
-              color='grey'
-              style='stroke'
-              strokeWidth={2}
-            >
-              <DashPathEffect intervals={[6, 6]} />
-            </Path>
-            <Path
-              path={path}
-              style='stroke'
-              strokeWidth={3}
-            >
-              <ColorShader color='lightBlue' />
-            </Path>
-          </Group>
-          <Circle cx={translateX} cy={translateY} r={7} color='white' />
-        </Canvas>
-      </GestureDetector>
-    </View>
+    <GestureDetector gesture={pinch}>
+      <View style={styles.cont}>
+        <Text style={styles.txt}>{value}</Text>
+        <ScrollView
+          horizontal
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: Dimensions.get('window').width / 2 - PADDING * 2 }} // equals calc(50% - PADDING)
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+        >
+          <Canvas style={{ flex: 1, minWidth: '100%' /* minWidth required because dimension.width is initially 0 */, width: dimension.width }} onLayout={handleCanvasLayout}>
+            <Group>
+              <Path
+                path={`M ${PADDING} ${yOrigin} L ${dimension.width - PADDING} ${yOrigin}`}
+                color='grey'
+                style='stroke'
+                strokeWidth={2}
+              >
+                <DashPathEffect intervals={[6, 6]} />
+              </Path>
+              <Path
+                path={path}
+                style='stroke'
+                strokeWidth={3}
+              >
+                <ColorShader color='lightBlue' />
+              </Path>
+            </Group>
+            <Circle cx={translateX} cy={translateY} r={7} color='white' />
+          </Canvas>
+        </ScrollView>
+        <Text style={styles.txtScale}>{scale.toFixed(2)}</Text>
+      </View>
+    </GestureDetector>
   );
 };
 
@@ -126,6 +153,10 @@ const styles = StyleSheet.create({
   txt: {
     fontSize: 20,
     color: 'white',
+  },
+  txtScale: {
+    fontSize: 16,
+    color: 'tomato',
   },
 });
 
