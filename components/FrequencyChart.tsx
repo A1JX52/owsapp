@@ -19,6 +19,10 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const handleCanvasLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setDimension({ width, height });
+
+    if (translateX.value > width - Dimensions.get('window').width / 2 + PADDING) {
+      scrollRef.current?.scrollToEnd();
+    }
   };
 
   const translateX = useSharedValue(PADDING);
