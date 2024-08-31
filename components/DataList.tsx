@@ -86,11 +86,17 @@ const DataList = () => {
 
   const frequencyPoints = useMemo(() => buildFrequencyPoints([...allItems].reverse()), [allItems]);
 
+  var downsampler = require("downsample-lttb");
   const buildAccelerationPoints = (items: AccelerometerItem[]): DataPoint[] => {
     if (!items.length) return [];
     const observations = items.map(item => [item.z]);
-    const result = (new WaveHeightFilter(observations)).filterAll();
-    return result.map(([cumsum, position, velocity], index) => ({
+    let result = (new WaveHeightFilter(observations)).filterAll();
+    result = result.map(([cumsum, position, velocity], index) => ([
+      index,
+      position,
+    ]));
+    result = downsampler.processData(result, Math.trunc(items.length / 100));
+    return result.map(([index, position]) => ({
       date: index * WaveHeightFilter.dT,
       value: position,
     }));
