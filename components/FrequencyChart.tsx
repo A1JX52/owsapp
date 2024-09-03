@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, StyleSheet, Text, LayoutChangeEvent, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
-import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect } from '@shopify/react-native-skia';
+import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect, vec, PathVerb } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
-import { interpolateNumber } from 'd3-interpolate'
 import { DataPoint } from '../models';
 import { GestureDetector, Gesture, ScrollView } from 'react-native-gesture-handler';
 import { useSharedValue, runOnJS } from 'react-native-reanimated';
@@ -12,7 +11,6 @@ const PADDING = 16;
 
 const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const [dimension, setDimension] = useState({width: 0, height: 0});
-  const [getYForX, setGetYForX] = useState(() => (x: number) => {'worklet';});
   const [value, setValue] = useState(-1);
   const [yOrigin, setYOrigin] = useState(-1);
 
@@ -23,6 +21,30 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     if (translateX.value > width - Dimensions.get('window').width / 2 + PADDING) {
       scrollRef.current?.scrollToEnd();
     }
+  };
+
+  const getYForX = (x: number) => {
+    'worklet';
+    const cmds = path.toCmds();
+    let from = vec(0, 0);
+
+    for (let i = 0; i < cmds.length; i++) {
+      const cmd = cmds[i];
+
+      if (cmd[0] === PathVerb.Move) {
+        from = vec(cmd[1], cmd[2]);
+      } else if (cmd[0] === PathVerb.Line) {
+        const to = vec(cmd[1], cmd[2]);
+        
+        if (x >= from.x && x <= to.x) {
+          const fraction = (x - from.x) / (to.x - from.x);
+          setValue(fraction < 0.5 ? points[i - 1].value : points[i].value);
+          return from.y + (to.y - from.y) * fraction;
+        }
+        from = to;
+      }
+    }
+    return -40;
   };
 
   const translateX = useSharedValue(PADDING);
@@ -46,37 +68,17 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   
     path.moveTo(xScale(data[0].date), yScale(data[0].value));
   
-    data.forEach(pt => {
+    data.slice(1).forEach(pt => {
       path.lineTo(xScale(pt.date), yScale(pt.value));
-    });
-
-    const wrapper = (x: number) => {
-      const date = xScale.invert(x);
-      for (let i = 0; i < data.length - 1; i++) {
-        var pt1 = data[i];
-        var pt2 = data[i + 1];
-
-        if (date >= pt1.date && date <= pt2.date) {
-          const i = interpolateNumber(pt1.value, pt2.value);
-          const t = (date - pt1.date) / (pt2.date - pt1.date);
-          translateY.value = yScale(i(t));
-          setValue(date - pt1.date < pt2.date - date ? pt1.value : pt2.value);
-          return;
-        }
-      }
-      translateY.value = -40;
-    };
-
-    setGetYForX(() => (x: number) => {
-      'worklet';
-      runOnJS(wrapper)(x);
     });
     setYOrigin(yScale(0));
     return path;
   };
 
   const path = useMemo(() => buildPath(points), [points, dimension]);
-  useEffect(() => getYForX(translateX.value), [path]);
+  useEffect(() => {
+    translateY.value = getYForX(translateX.value)
+  }, [path]);
   
   const scrollRef = useRef<ScrollView>(null);
   const [scale, setScale] = useState(1);
@@ -106,7 +108,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     let x = Math.min(Math.max(0, event.nativeEvent.contentOffset.x), width); // values can be out of bounds because of overScroll caused by inertia
     x += PADDING;
     translateX.value = x;
-    getYForX(x);
+    translateY.value = getYForX(x);
   }
 
   return (
