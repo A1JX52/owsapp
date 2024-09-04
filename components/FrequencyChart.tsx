@@ -1,27 +1,56 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text, LayoutChangeEvent, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
 import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect, vec, PathVerb } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { DataPoint } from '../models';
-import { GestureDetector, Gesture, ScrollView } from 'react-native-gesture-handler';
-import { useSharedValue, runOnJS } from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { useSharedValue, useDerivedValue, runOnJS } from 'react-native-reanimated';
 import { getMinMax } from '../services/helper';
 
 const PADDING = 16;
 
 const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
-  const [dimension, setDimension] = useState({width: 0, height: 0});
+  const [scale, setScale] = useState(1);
   const [value, setValue] = useState(-1);
   const [yOrigin, setYOrigin] = useState(-1);
 
-  const handleCanvasLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setDimension({ width, height });
+  const translateX = useSharedValue(Dimensions.get('window').width / 2 - PADDING);
+  const translateY = useSharedValue(-40);
+  
+  const canvasSize = useSharedValue({ width: 0, height: 0 });
+  const contentSize = useDerivedValue(() => {
+    const newContentWidth = canvasSize.value.width * scale;
+    const paddingHorizontal = canvasSize.value.width / 2;
+    translateX.value = Math.max(translateX.value, -newContentWidth + paddingHorizontal) // fix scroll out of content
+    return { width: newContentWidth, height: canvasSize.value.height };
+  });
 
-    if (translateX.value > width - Dimensions.get('window').width / 2 + PADDING) {
-      scrollRef.current?.scrollToEnd();
-    }
+  const buildPath = (data: DataPoint[]) => {
+    const path = Skia.Path.Make();
+  
+    if (!data.length) return path;
+  
+    const values = data.map(pt => pt.value);
+    const dates = data.map(pt => pt.date);
+  
+    const xScale = scaleLinear()
+      .domain([dates[0], dates[dates.length - 1]])
+      .range([0, contentSize.value.width]);
+  
+    const yScale = scaleLinear()
+      .domain(Object.values(getMinMax(values)))
+      .range([contentSize.value.height - PADDING, PADDING]); // PADDING because strokeWidth may exceed canvas at edge
+  
+    path.moveTo(xScale(data[0].date), yScale(data[0].value));
+  
+    data.slice(1).forEach(pt => {
+      path.lineTo(xScale(pt.date), yScale(pt.value)); // path.doPoint(xScale(pt.date)).x != xScale(pt.date)
+    });
+    setYOrigin(yScale(0));
+    return path;
   };
+
+  const path = useMemo(() => buildPath(points), [points, contentSize.value.width]); // should not listen to a shared value like that
 
   const getYForX = (x: number) => {
     'worklet';
@@ -38,95 +67,54 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
         
         if (x >= from.x && x <= to.x) {
           const fraction = (x - from.x) / (to.x - from.x);
-          setValue(fraction < 0.5 ? points[i - 1].value : points[i].value);
+          runOnJS(setValue)(fraction < 0.5 ? points[i - 1].value : points[i].value);
           return from.y + (to.y - from.y) * fraction;
         }
         from = to;
       }
     }
+    if (cmds.length && x >= from.x) return from.y; // handle minor deviations in path
     return -40;
   };
 
-  const translateX = useSharedValue(PADDING);
-  const translateY = useSharedValue(-40);
-
-  const buildPath = (data: DataPoint[]) => {
-    const path = Skia.Path.Make();
-  
-    if (!data.length) return path;
-  
-    const values = data.map(pt => pt.value);
-    const dates = data.map(pt => pt.date);
-  
-    const xScale = scaleLinear()
-      .domain([dates[0], dates[dates.length - 1]])
-      .range([PADDING, dimension.width - PADDING]); // PADDING because strokeWidth may exceed canvas at edge
-  
-    const yScale = scaleLinear()
-      .domain(Object.values(getMinMax(values)))
-      .range([dimension.height - PADDING, PADDING]);
-  
-    path.moveTo(xScale(data[0].date), yScale(data[0].value));
-  
-    data.slice(1).forEach(pt => {
-      path.lineTo(xScale(pt.date), yScale(pt.value));
-    });
-    setYOrigin(yScale(0));
-    return path;
-  };
-
-  const path = useMemo(() => buildPath(points), [points, dimension]);
   useEffect(() => {
-    translateY.value = getYForX(translateX.value)
+    const paddingHorizontal = canvasSize.value.width / 2;
+    const x = Math.max(0, -translateX.value + paddingHorizontal); // handle fractional deviations in layout (Dimensions.get('window').width != canvasSize.width)
+    translateY.value = getYForX(x)
   }, [path]);
   
-  const scrollRef = useRef<ScrollView>(null);
-  const [scale, setScale] = useState(1);
   const oldScale = useSharedValue(1);
 
   const pinch = Gesture.Pinch()
-    .blocksExternalGesture(scrollRef)
     .onBegin((event) => {
       oldScale.value = scale;
     })
     .onUpdate((event) => {
       runOnJS(setScale)(Math.max(oldScale.value * event.scale, 1));
-    })
-    .onEnd((event) => {
-      if (oldScale.value * event.scale < 1) {
-        event.scale = 1 / oldScale.value;
-      }
-      runOnJS(setDimension)({
-        width: dimension.width * event.scale,
-        height: dimension.height,
-      });
     });
 
+  const transform = useDerivedValue(() => [
+    { translateX: translateX.value },
+  ]);
   
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = event.nativeEvent.contentSize.width;
-    let x = Math.min(Math.max(0, event.nativeEvent.contentOffset.x), width); // values can be out of bounds because of overScroll caused by inertia
-    x += PADDING;
-    translateX.value = x;
-    translateY.value = getYForX(x);
-  }
+  const pan = Gesture.Pan()
+    .onChange((event) => {
+      const paddingHorizontal = canvasSize.value.width / 2;
+      const x = Math.max(Math.min(paddingHorizontal, translateX.value + event.changeX), -contentSize.value.width + paddingHorizontal);
+      translateX.value = x;
+      // translateY.value = Math.max(Math.min(contentSize.value.height - PADDING, getYForX(-x + paddingHorizontal)), PADDING);
+      translateY.value = getYForX(-x + paddingHorizontal);
+    });
 
   return (
     <GestureDetector gesture={pinch}>
       <View style={styles.cont}>
         <Text style={styles.txt}>{value}</Text>
-        <ScrollView
-          horizontal
-          ref={scrollRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: Dimensions.get('window').width / 2 - PADDING * 2 }} // equals calc(50% - PADDING)
-          showsHorizontalScrollIndicator={false}
-          onScroll={onScroll}
-        >
-          <Canvas style={{ flex: 1, minWidth: '100%' /* minWidth required because dimension.width is initially 0 */, width: dimension.width }} onLayout={handleCanvasLayout}>
-            <Group>
+        <GestureDetector gesture={pan}>
+          <Canvas style={{ flex: 1 }} onSize={canvasSize}>
+            <Group transform={transform}>
               <Path
-                path={`M ${PADDING} ${yOrigin} L ${dimension.width - PADDING} ${yOrigin}`}
+                path={`M ${0} ${yOrigin} L ${contentSize.value.width} ${yOrigin}`}
                 color='grey'
                 style='stroke'
                 strokeWidth={2}
@@ -141,9 +129,9 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
                 <ColorShader color='lightBlue' />
               </Path>
             </Group>
-            <Circle cx={translateX} cy={translateY} r={7} color='white' />
+            <Circle cx={canvasSize.value.width / 2} cy={translateY} r={7} color='white' />
           </Canvas>
-        </ScrollView>
+        </GestureDetector>
         <Text style={styles.txtScale}>{scale.toFixed(2)}</Text>
       </View>
     </GestureDetector>
