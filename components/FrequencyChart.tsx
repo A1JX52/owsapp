@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, StyleSheet, Text, Dimensions } from 'react-native';
+import { StyleSheet, Text, Dimensions } from 'react-native';
 import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect, vec, PathVerb } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { DataPoint } from '../models';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import { useSharedValue, useDerivedValue, runOnJS } from 'react-native-reanimated';
+import Animated, { useSharedValue, useDerivedValue, runOnJS, withSpring } from 'react-native-reanimated';
 import { getMinMax } from '../services/helper';
 
 const PADDING = 16;
@@ -15,13 +15,16 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const [yOrigin, setYOrigin] = useState(-1);
 
   const translateX = useSharedValue(Dimensions.get('window').width / 2 - PADDING);
-  const translateY = useSharedValue(-40);
   
   const canvasSize = useSharedValue({ width: 0, height: 0 });
   const contentSize = useDerivedValue(() => {
     const newContentWidth = canvasSize.value.width * scale;
     const paddingHorizontal = canvasSize.value.width / 2;
-    translateX.value = Math.max(translateX.value, -newContentWidth + paddingHorizontal) // fix scroll out of content
+    if (paddingHorizontal) { // would otherwise ruin our initial translateX value during rendering
+      // handle fractional deviations in layout (Dimensions.get('window').width != canvasSize.width)
+      const x = Math.max(Math.min(paddingHorizontal, translateX.value), -newContentWidth + paddingHorizontal); // fix scroll out of content
+      translateX.value = x;
+    }
     return { width: newContentWidth, height: canvasSize.value.height };
   });
 
@@ -73,15 +76,15 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
         from = to;
       }
     }
-    if (cmds.length && x >= from.x) return from.y; // handle minor deviations in path
+    if (cmds.length && x >= from.x) return from.y; // handle minor deviations in path (caused by graphics engine)
     return -40;
   };
 
-  useEffect(() => {
-    const paddingHorizontal = canvasSize.value.width / 2;
-    const x = Math.max(0, -translateX.value + paddingHorizontal); // handle fractional deviations in layout (Dimensions.get('window').width != canvasSize.width)
-    translateY.value = getYForX(x)
-  }, [path]);
+  const translateXWithSpring = useDerivedValue(() => withSpring(translateX.value, {
+    mass: 0.3,
+    damping: 30
+  }));
+  const translateY = useDerivedValue(() => getYForX(-translateXWithSpring.value + canvasSize.value.width / 2));
   
   const oldScale = useSharedValue(1);
 
@@ -94,7 +97,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     });
 
   const transform = useDerivedValue(() => [
-    { translateX: translateX.value },
+    { translateX: translateXWithSpring.value },
   ]);
   
   const pan = Gesture.Pan()
@@ -102,13 +105,11 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
       const paddingHorizontal = canvasSize.value.width / 2;
       const x = Math.max(Math.min(paddingHorizontal, translateX.value + event.changeX), -contentSize.value.width + paddingHorizontal);
       translateX.value = x;
-      // translateY.value = Math.max(Math.min(contentSize.value.height - PADDING, getYForX(-x + paddingHorizontal)), PADDING);
-      translateY.value = getYForX(-x + paddingHorizontal);
     });
 
   return (
     <GestureDetector gesture={pinch}>
-      <View style={styles.cont}>
+      <Animated.View style={styles.cont}>
         <Text style={styles.txt}>{value}</Text>
         <GestureDetector gesture={pan}>
           <Canvas style={{ flex: 1 }} onSize={canvasSize}>
@@ -133,7 +134,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
           </Canvas>
         </GestureDetector>
         <Text style={styles.txtScale}>{scale.toFixed(2)}</Text>
-      </View>
+      </Animated.View>
     </GestureDetector>
   );
 };
