@@ -101,6 +101,8 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   ]);
   
   const pan = Gesture.Pan()
+    .simultaneousWithExternalGesture(pinch)
+    .maxPointers(1)
     .onChange((event) => {
       const paddingHorizontal = canvasSize.value.width / 2;
       const x = Math.max(Math.min(paddingHorizontal, translateX.value + event.changeX), -contentSize.value.width + paddingHorizontal);
