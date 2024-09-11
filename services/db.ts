@@ -1,11 +1,13 @@
 import SQLite from "react-native-sqlite-storage";
-import {AccelerometerItem} from '../models';
+import { AccelerometerItem, LocationItem } from '../models';
 
-export interface DatabaseAcc {
+export interface Database {
   addAcc(item: AccelerometerItem): Promise<void>;
+  addLocation(item: LocationItem): Promise<void>;
   getAcc(): Promise<AccelerometerItem | null>;
   getSubsetAcc(offset: number, limit: number): Promise<AccelerometerItem[]>;
-  deleteAcc(): Promise<void>;
+  getSubsetLocation(offset: number, limit: number): Promise<LocationItem[]>;
+  drop(): Promise<void>;
 }
 
 let dbInstance: SQLite.SQLiteDatabase | undefined;
@@ -49,6 +51,15 @@ async function init(db: SQLite.SQLiteDatabase): Promise<void> {
       timestamp INTEGER
     );
   `);
+
+  db.executeSql(`
+    CREATE TABLE IF NOT EXISTS Location (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      latitude REAL,
+      longitude REAL,
+      timestamp INTEGER
+    );
+  `);
 }
 
 async function close(): Promise<void> {
@@ -68,6 +79,13 @@ async function addAcc(item: AccelerometerItem): Promise<void> {
     });
 };
 
+async function addLocation(item: LocationItem): Promise<void> {
+  return getDatabase()
+    .then((db) => {
+      db.executeSql(`INSERT INTO Location (latitude, longitude, timestamp) VALUES (?, ?, ?);`, [item.latitude, item.longitude, item.timestamp])
+    });
+}
+
 async function getSubsetAcc(offset: number, limit: number): Promise<AccelerometerItem[]> {
   return getDatabase()
     .then((db) =>
@@ -75,6 +93,21 @@ async function getSubsetAcc(offset: number, limit: number): Promise<Acceleromete
     )
     .then(([results]) => {
       const items: AccelerometerItem[] = [];
+
+      for (let i = 0; i < results.rows.length; i++) {
+        items.push(results.rows.item(i))
+      }
+      return items;
+    });
+};
+
+async function getSubsetLocation(offset: number, limit: number): Promise<LocationItem[]> {
+  return getDatabase()
+    .then((db) =>
+      db.executeSql(`SELECT * FROM Location ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`)
+    )
+    .then(([results]) => {
+      const items: LocationItem[] = [];
 
       for (let i = 0; i < results.rows.length; i++) {
         items.push(results.rows.item(i))
@@ -96,17 +129,20 @@ async function getAcc(): Promise<AccelerometerItem | null> {
     });
 };
 
-async function deleteAcc(): Promise<void> {
+async function drop(): Promise<void> {
   return getDatabase()
     .then((db) => {
       db.executeSql('DROP TABLE Accelerometer');
+      db.executeSql('DROP TABLE Location');
       init(db);
     })
 };
 
-export const database: DatabaseAcc = {
+export const database: Database = {
   addAcc,
+  addLocation,
   getAcc,
   getSubsetAcc,
-  deleteAcc,
+  getSubsetLocation,
+  drop,
 };

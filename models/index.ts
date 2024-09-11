@@ -6,6 +6,13 @@ export type AccelerometerItem = {
   id: number;
 };
 
+export type LocationItem = {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+  id: number;
+}
+
 export type DataPoint = {
   date: number,
   value: number,

@@ -5,6 +5,7 @@ import { useDatabase } from '../contexts/dbContext';
 import DataListItem from './DataListItem';
 import FrequencyChart from './FrequencyChart';
 import WaveHeightFilter from '../services/WaveHeightFilter';
+import LocationMap from './LocationMap';
 
 const DataList = () => {
   const [loading, setLoading] = useState(false);
@@ -106,6 +107,7 @@ const DataList = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      <LocationMap />
       <FrequencyChart points={accelerationPoints} />
       <FrequencyChart points={frequencyPoints} />
       <Button title='scroll to end' onPress={() => {

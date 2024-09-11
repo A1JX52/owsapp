@@ -34,7 +34,7 @@ const DevView = () => {
         onPress={() => {
           Alert.alert('confirm', 'are you sure you want to delete all items?', [
             {text: 'cancel'},
-            {text: 'okay', onPress: db.deleteAcc},
+            {text: 'okay', onPress: db.drop},
           ]);
         }}
       />
