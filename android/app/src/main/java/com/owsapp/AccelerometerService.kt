@@ -127,7 +127,7 @@ class AccelerometerService : Service(), SensorEventListener, LocationListener {
                 NOTIFICATION_ID,
                 NotificationsHelper.buildNotification(this),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST // is the default value (can be omitted)
                 } else {
                     0
                 }
