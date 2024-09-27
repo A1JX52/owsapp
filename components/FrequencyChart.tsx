@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { StyleSheet, Text, Dimensions } from 'react-native';
-import { Skia, Canvas, Group, Path, ColorShader, Circle, DashPathEffect, vec, PathVerb } from '@shopify/react-native-skia';
+import { Skia, Canvas, Group, Circle, vec, PathVerb, SkImage, PaintStyle, Image } from '@shopify/react-native-skia';
 import { scaleLinear } from 'd3-scale'
 import { DataPoint } from '../models';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
@@ -110,6 +110,42 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
       translateX.value = x;
     });
 
+  const [cachedImage, setCachedImage] = useState<SkImage>();
+
+  const makeNonTextureImage = (texture: SkImage) =>
+    Skia.Image.MakeImageFromEncoded(
+      Skia.Data.fromBytes(texture.encodeToBytes())
+    )!;
+
+  const buildImage = () => {
+    const offscreen = Skia.Surface.MakeOffscreen(contentSize.value.width, contentSize.value.height)!;
+    const canvas = offscreen.getCanvas();
+
+    const p1 = Skia.Paint();
+    p1.setColor(Skia.Color('grey'));
+    p1.setPathEffect(Skia.PathEffect.MakeDash([6, 6]))
+    p1.setStyle(PaintStyle.Stroke);
+    p1.setStrokeWidth(2);
+    canvas.drawPath(Skia.Path.MakeFromSVGString(`M ${0} ${yOrigin} L ${contentSize.value.width} ${yOrigin}`)!, p1);
+
+    const p2 = Skia.Paint();
+    p2.setColor(Skia.Color('lightblue'));
+    p2.setStyle(PaintStyle.Stroke);
+    p2.setStrokeWidth(3);
+    canvas.drawPath(path, p2);
+
+    offscreen.flush()
+    const image = offscreen.makeImageSnapshot();
+    offscreen.dispose();
+    return image;
+  }
+
+  useEffect(() => {
+    if (contentSize.value.width && contentSize.value.height) {
+      setCachedImage(makeNonTextureImage(buildImage()));
+    }
+  }, [path])
+
   return (
     <GestureDetector gesture={pinch}>
       <Animated.View style={styles.cont}>
@@ -118,26 +154,12 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
           style={styles.txt}
         />
         <GestureDetector gesture={pan}>
-          <Canvas style={{ flex: 1 }} onSize={canvasSize}>
-            <Group transform={transform}>
-              <Path
-                path={`M ${0} ${yOrigin} L ${contentSize.value.width} ${yOrigin}`}
-                color='grey'
-                style='stroke'
-                strokeWidth={2}
-              >
-                <DashPathEffect intervals={[6, 6]} />
-              </Path>
-              <Path
-                path={path}
-                style='stroke'
-                strokeWidth={3}
-              >
-                <ColorShader color='lightBlue' />
-              </Path>
-            </Group>
-            <Circle cx={canvasSize.value.width / 2} cy={translateY} r={7} color='white' />
-          </Canvas>
+        <Canvas style={{ flex: 1 }} onSize={canvasSize}>
+          <Group transform={transform}>
+            { cachedImage && <Image image={cachedImage} width={contentSize.value.width} height={contentSize.value.height} /> }
+          </Group>
+          <Circle cx={canvasSize.value.width / 2} cy={translateY} r={7} color='white' />
+        </Canvas>
         </GestureDetector>
         <Text style={styles.txtScale}>{scale.toFixed(2)}</Text>
       </Animated.View>
