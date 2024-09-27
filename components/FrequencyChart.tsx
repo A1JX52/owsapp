@@ -6,12 +6,13 @@ import { DataPoint } from '../models';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useDerivedValue, runOnJS, withSpring } from 'react-native-reanimated';
 import { getMinMax } from '../services/helper';
+import AnimatedText from './AnimatedText';
 
 const PADDING = 16;
 
 const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   const [scale, setScale] = useState(1);
-  const [value, setValue] = useState(-1);
+  const output = useSharedValue(-1);
   const [yOrigin, setYOrigin] = useState(-1);
 
   const translateX = useSharedValue(Dimensions.get('window').width / 2 - PADDING);
@@ -70,7 +71,7 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
         
         if (x >= from.x && x <= to.x) {
           const fraction = (x - from.x) / (to.x - from.x);
-          runOnJS(setValue)(fraction < 0.5 ? points[i - 1].value : points[i].value);
+          output.value = fraction < 0.5 ? points[i - 1].value : points[i].value;
           return from.y + (to.y - from.y) * fraction;
         }
         from = to;
@@ -112,7 +113,10 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
   return (
     <GestureDetector gesture={pinch}>
       <Animated.View style={styles.cont}>
-        <Text style={styles.txt}>{value}</Text>
+        <AnimatedText
+          sv={output}
+          style={styles.txt}
+        />
         <GestureDetector gesture={pan}>
           <Canvas style={{ flex: 1 }} onSize={canvasSize}>
             <Group transform={transform}>
