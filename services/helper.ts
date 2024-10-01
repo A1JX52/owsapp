@@ -9,4 +9,4 @@ export const getMinMax = (arr: number[]): { min: number; max: number } => {
     if (current < min) min = current;
   }
   return { min, max };
-}
+};

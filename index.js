@@ -2,21 +2,30 @@
  * @format
  */
 
-import {AppRegistry} from 'react-native';
-import App from './App';
-import {name as appName} from './app.json';
-import { database } from './services/db';
-import useServiceStore from './serviceStore';
+import { AppRegistry } from "react-native";
+import App from "./App";
+import { name as appName } from "./app.json";
+import { database } from "./services/db";
+import useServiceStore from "./serviceStore";
 
 AppRegistry.registerComponent(appName, () => App);
 
-AppRegistry.registerHeadlessTask('AccelerometerData', () => async (taskData) => {
-  await database.addAcc(taskData);
-});
-AppRegistry.registerHeadlessTask('LocationData', () => async (taskData) => {
+AppRegistry.registerHeadlessTask(
+  "AccelerometerData",
+  () => async (taskData) => {
+    await database.addAcc(taskData);
+  }
+);
+AppRegistry.registerHeadlessTask("LocationData", () => async (taskData) => {
   database.addLocation(taskData);
 });
-AppRegistry.registerHeadlessTask('LocationPermissionDeniedPermanently', () => async () => {})
-AppRegistry.registerHeadlessTask('AccelerometerRunning', () => async (taskData) => {
-  useServiceStore.setState({ isRunning: taskData.running });
-});
+AppRegistry.registerHeadlessTask(
+  "LocationPermissionDeniedPermanently",
+  () => async () => {}
+);
+AppRegistry.registerHeadlessTask(
+  "AccelerometerRunning",
+  () => async (taskData) => {
+    useServiceStore.setState({ isRunning: taskData.running });
+  }
+);

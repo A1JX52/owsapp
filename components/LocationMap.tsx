@@ -1,8 +1,8 @@
-import MapView, { Polyline } from 'react-native-maps';
-import { useDatabase } from '../contexts/dbContext';
-import { useEffect, useState, useRef } from 'react';
-import { LocationItem } from '../models';
-import { StyleSheet, View } from 'react-native';
+import MapView, { Polyline } from "react-native-maps";
+import { useDatabase } from "../contexts/dbContext";
+import { useEffect, useState, useRef } from "react";
+import { LocationItem } from "../models";
+import { StyleSheet, View } from "react-native";
 
 const LocationMap = () => {
   const db = useDatabase();
@@ -28,12 +28,17 @@ const LocationMap = () => {
         latitudeDelta: 0,
         longitudeDelta: 0,
       }}
-      onMapLoaded={() => mapRef.current.fitToCoordinates(items,  { edgePadding: { top: 40, right: 40, bottom: 40, left: 40 }, animated: false })}
+      onMapLoaded={() =>
+        mapRef.current.fitToCoordinates(items, {
+          edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+          animated: false,
+        })
+      }
     >
-        <Polyline coordinates={items} />
+      <Polyline coordinates={items} />
     </MapView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   cont: {

@@ -1,9 +1,9 @@
-import React, {useContext, ReactNode} from 'react';
-import { database, Database } from '../services/db';
+import React, { useContext, ReactNode } from "react";
+import { database, Database } from "../services/db";
 
 const DatabaseContext = React.createContext<Database | undefined>(undefined);
 
-export const DatabaseProvider = ({children}: any) => (
+export const DatabaseProvider = ({ children }: any) => (
   <DatabaseContext.Provider value={database}>
     {children}
   </DatabaseContext.Provider>

@@ -1,9 +1,13 @@
-const { KalmanFilter } = require('kalman-filter');
-import { diag, mean, multiply, subtract } from 'mathjs'
+const { KalmanFilter } = require("kalman-filter");
+import { diag, mean, multiply, subtract } from "mathjs";
 
 class WaveHeightFilter {
   static dT = 0.01;
-  private B = [[(1.0/6) * WaveHeightFilter.dT ** 3], [0.5 * WaveHeightFilter.dT ** 2], [WaveHeightFilter.dT]]; // one single integration for each to only apply the difference in acceleration
+  private B = [
+    [(1.0 / 6) * WaveHeightFilter.dT ** 3],
+    [0.5 * WaveHeightFilter.dT ** 2],
+    [WaveHeightFilter.dT],
+  ]; // one single integration for each to only apply the difference in acceleration
   private index = 0;
 
   private mean;
@@ -30,7 +34,8 @@ class WaveHeightFilter {
         [0, 1, WaveHeightFilter.dT],
         [0, 0, 1],
       ], // is not ambiguous; specific physical model
-      constant: ({previousCorrected}: any) => { // transforms the predicted state to the actual output state [cumsum, position, velocity]
+      constant: ({ previousCorrected }: any) => {
+        // transforms the predicted state to the actual output state [cumsum, position, velocity]
         // use global index because only 'k-1' is provided
         const u = subtract(this.observations[this.index][0], this.mean);
         this.index++;
@@ -38,7 +43,7 @@ class WaveHeightFilter {
         return result;
       },
       covariance: [0.1, 0.1, 0.5],
-    }
+    },
   });
 
   filterAll(): number[][] {
@@ -46,18 +51,18 @@ class WaveHeightFilter {
 
     let previousCorrected: any = null;
     const results: number[][] = [];
-    this.observations.forEach(observation => {
+    this.observations.forEach((observation) => {
       const predicted = this.kFilter.predict({
-        previousCorrected
+        previousCorrected,
       });
 
       const correctedState = this.kFilter.correct({
         predicted,
-        observation: [0] // already handled by external influence because we normalize the observations relative to a mean value
+        observation: [0], // already handled by external influence because we normalize the observations relative to a mean value
       });
 
       results.push(correctedState.mean.flat());
-      previousCorrected = correctedState
+      previousCorrected = correctedState;
     });
     return results;
   }

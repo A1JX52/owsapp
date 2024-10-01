@@ -11,9 +11,9 @@ export type LocationItem = {
   longitude: number;
   timestamp: number;
   id: number;
-}
+};
 
 export type DataPoint = {
-  date: number,
-  value: number,
+  date: number;
+  value: number;
 };

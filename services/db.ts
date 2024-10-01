@@ -1,5 +1,5 @@
 import SQLite from "react-native-sqlite-storage";
-import { AccelerometerItem, LocationItem } from '../models';
+import { AccelerometerItem, LocationItem } from "../models";
 
 export interface Database {
   addAcc(item: AccelerometerItem): Promise<void>;
@@ -23,15 +23,15 @@ async function open(): Promise<SQLite.SQLiteDatabase> {
   SQLite.enablePromise(true);
 
   if (dbInstance) {
-    console.log('db already opened');
+    console.log("db already opened");
     return dbInstance;
   }
 
   const db = await SQLite.openDatabase({
-    name: 'owsapp.db',
-    location: 'default',
+    name: "owsapp.db",
+    location: "default",
   });
-  console.log('db opened');
+  console.log("db opened");
 
   await init(db);
 
@@ -40,7 +40,7 @@ async function open(): Promise<SQLite.SQLiteDatabase> {
 }
 
 async function init(db: SQLite.SQLiteDatabase): Promise<void> {
-  console.log('beginning db updates');
+  console.log("beginning db updates");
 
   db.executeSql(`
     CREATE TABLE IF NOT EXISTS Accelerometer (
@@ -73,53 +73,67 @@ async function close(): Promise<void> {
 }
 
 async function addAcc(item: AccelerometerItem): Promise<void> {
-  return getDatabase()
-    .then((db) => {
-      db.executeSql(`INSERT INTO Accelerometer (x, y, z, timestamp) VALUES (?, ?, ?, ?);`, [item.x, item.y, item.z, item.timestamp])
-    });
-};
-
-async function addLocation(item: LocationItem): Promise<void> {
-  return getDatabase()
-    .then((db) => {
-      db.executeSql(`INSERT INTO Location (latitude, longitude, timestamp) VALUES (?, ?, ?);`, [item.latitude, item.longitude, item.timestamp])
-    });
+  return getDatabase().then((db) => {
+    db.executeSql(
+      `INSERT INTO Accelerometer (x, y, z, timestamp) VALUES (?, ?, ?, ?);`,
+      [item.x, item.y, item.z, item.timestamp]
+    );
+  });
 }
 
-async function getSubsetAcc(offset: number, limit: number): Promise<AccelerometerItem[]> {
+async function addLocation(item: LocationItem): Promise<void> {
+  return getDatabase().then((db) => {
+    db.executeSql(
+      `INSERT INTO Location (latitude, longitude, timestamp) VALUES (?, ?, ?);`,
+      [item.latitude, item.longitude, item.timestamp]
+    );
+  });
+}
+
+async function getSubsetAcc(
+  offset: number,
+  limit: number
+): Promise<AccelerometerItem[]> {
   return getDatabase()
     .then((db) =>
-      db.executeSql(`SELECT * FROM Accelerometer ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`)
+      db.executeSql(
+        `SELECT * FROM Accelerometer ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`
+      )
     )
     .then(([results]) => {
       const items: AccelerometerItem[] = [];
 
       for (let i = 0; i < results.rows.length; i++) {
-        items.push(results.rows.item(i))
+        items.push(results.rows.item(i));
       }
       return items;
     });
-};
+}
 
-async function getSubsetLocation(offset: number, limit: number): Promise<LocationItem[]> {
+async function getSubsetLocation(
+  offset: number,
+  limit: number
+): Promise<LocationItem[]> {
   return getDatabase()
     .then((db) =>
-      db.executeSql(`SELECT * FROM Location ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`)
+      db.executeSql(
+        `SELECT * FROM Location ORDER BY id DESC LIMIT ${limit} OFFSET ${offset};`
+      )
     )
     .then(([results]) => {
       const items: LocationItem[] = [];
 
       for (let i = 0; i < results.rows.length; i++) {
-        items.push(results.rows.item(i))
+        items.push(results.rows.item(i));
       }
       return items;
     });
-};
+}
 
 async function getAcc(): Promise<AccelerometerItem | null> {
   return getDatabase()
     .then((db) =>
-      db.executeSql('SELECT * FROM Accelerometer ORDER BY id DESC LIMIT 1;')
+      db.executeSql("SELECT * FROM Accelerometer ORDER BY id DESC LIMIT 1;")
     )
     .then(([results]) => {
       if (results !== undefined && results.rows.length > 0) {
@@ -127,16 +141,15 @@ async function getAcc(): Promise<AccelerometerItem | null> {
       }
       return null;
     });
-};
+}
 
 async function drop(): Promise<void> {
-  return getDatabase()
-    .then((db) => {
-      db.executeSql('DROP TABLE Accelerometer');
-      db.executeSql('DROP TABLE Location');
-      init(db);
-    })
-};
+  return getDatabase().then((db) => {
+    db.executeSql("DROP TABLE Accelerometer");
+    db.executeSql("DROP TABLE Location");
+    init(db);
+  });
+}
 
 export const database: Database = {
   addAcc,
