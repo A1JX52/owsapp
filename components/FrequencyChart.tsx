@@ -50,21 +50,20 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     return { width: newContentWidth, height: canvasSize.value.height };
   });
 
+  const xScale = (value: number) =>
+    scaleLinear()
+      .domain([points[0].date, points[points.length - 1].date])
+      .range([0, contentSize.value.width])(value);
+
+  const yScale = (value: number) =>
+    scaleLinear()
+      .domain(Object.values(getMinMax(points.map((pt) => pt.value))))
+      .range([contentSize.value.height - PADDING, PADDING])(value); // PADDING because strokeWidth may exceed canvas at edge
+
   const buildPath = (data: DataPoint[]) => {
     const path = Skia.Path.Make();
 
     if (!data.length) return path;
-
-    const values = data.map((pt) => pt.value);
-    const dates = data.map((pt) => pt.date);
-
-    const xScale = scaleLinear()
-      .domain([dates[0], dates[dates.length - 1]])
-      .range([0, contentSize.value.width]);
-
-    const yScale = scaleLinear()
-      .domain(Object.values(getMinMax(values)))
-      .range([contentSize.value.height - PADDING, PADDING]); // PADDING because strokeWidth may exceed canvas at edge
 
     path.moveTo(xScale(data[0].date), yScale(data[0].value));
 
