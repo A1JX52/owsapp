@@ -13,6 +13,8 @@ import DataListItem from "./DataListItem";
 import FrequencyChart from "./FrequencyChart";
 import WaveHeightFilter from "../services/WaveHeightFilter";
 import LocationMap from "./LocationMap";
+import FourierTransform from "../services/FourierTransform";
+import HighPassFilter from "../services/HighPassFilter";
 
 const DataList = () => {
   const [loading, setLoading] = useState(false);
@@ -103,8 +105,18 @@ const DataList = () => {
   var downsampler = require("downsample-lttb");
   const buildAccelerationPoints = (items: AccelerometerItem[]): DataPoint[] => {
     if (!items.length) return [];
-    const observations = items.map((item) => [item.z]);
-    let result = new WaveHeightFilter(observations).filterAll();
+
+    const observations = items.map((item) => item.z);
+    const fftResult = new FourierTransform();
+    fftResult.fft(observations);
+
+    const hpFilter = new HighPassFilter(0.9 * fftResult.getDominantFrequency());
+    let hpObservations = [];
+    for (let i = 0; i < observations.length; i++) {
+      hpObservations.push([hpFilter.filter(observations[i])]);
+    }
+    let result = new WaveHeightFilter(hpObservations).filterAll();
+
     result = result.map(([cumsum, position, velocity], index) => [
       index,
       position,
