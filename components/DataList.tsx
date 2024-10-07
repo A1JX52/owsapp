@@ -11,10 +11,8 @@ import { AccelerometerItem, DataPoint } from "../models";
 import { useDatabase } from "../contexts/dbContext";
 import DataListItem from "./DataListItem";
 import FrequencyChart from "./FrequencyChart";
-import WaveHeightFilter from "../services/WaveHeightFilter";
 import LocationMap from "./LocationMap";
-import FourierTransform from "../services/FourierTransform";
-import HighPassFilter from "../services/HighPassFilter";
+import useAccelerometerProcessorStore from "../accelerometerProcessorStore";
 
 const DataList = () => {
   const [loading, setLoading] = useState(false);
@@ -102,41 +100,28 @@ const DataList = () => {
     [allItems]
   );
 
-  var downsampler = require("downsample-lttb");
-  const buildAccelerationPoints = (items: AccelerometerItem[]): DataPoint[] => {
-    if (!items.length) return [];
-
-    const observations = items.map((item) => item.z);
-    const fftResult = new FourierTransform();
-    fftResult.fft(observations);
-
-    const hpFilter = new HighPassFilter(0.9 * fftResult.getDominantFrequency());
-    let hpObservations = [];
-    for (let i = 0; i < observations.length; i++) {
-      hpObservations.push([hpFilter.filter(observations[i])]);
-    }
-    let result = new WaveHeightFilter(hpObservations).filterAll();
-
-    result = result.map(([cumsum, position, velocity], index) => [
-      index,
-      position,
-    ]);
-    result = downsampler.processData(result, Math.trunc(items.length / 100));
-    return result.map(([index, position]) => ({
-      date: index * WaveHeightFilter.dT,
-      value: position,
-    }));
-  };
-
-  const accelerationPoints = useMemo(
-    () => buildAccelerationPoints([...allItems].reverse()),
-    [allItems]
+  const accProcessor = useAccelerometerProcessorStore(
+    (state) => state.processor
   );
+
+  const accSetProcessor = useAccelerometerProcessorStore(
+    (state) => state.setProcessor
+  );
+
+  useEffect(() => {
+    if (!allItems.length) return;
+    accProcessor.reset(allItems);
+    accProcessor.applyHighPassFilter();
+    accProcessor.applyKalmanFilter();
+    accSetProcessor(accProcessor.clone());
+  }, [allItems]);
+
+  const accPoints = useMemo(() => accProcessor.getHeights(), [accProcessor]);
 
   return (
     <View style={{ flex: 1 }}>
       <LocationMap />
-      <FrequencyChart points={accelerationPoints} />
+      <FrequencyChart points={accPoints} />
       <FrequencyChart points={frequencyPoints} />
       <Button
         title="scroll to end"
