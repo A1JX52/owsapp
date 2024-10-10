@@ -6,6 +6,7 @@ import { mean } from "mathjs";
 
 var downsampler = require("downsample-lttb");
 class AccelerometerProcessor {
+  private observations: number[] = [];
   private result: number[][] = [];
 
   public clone() {
@@ -15,21 +16,29 @@ class AccelerometerProcessor {
   }
 
   public reset(items: AccelerometerItem[]) {
+    this.observations = items.map((item) => item.z);
     this.result = items.map((item) => [item.z]); // [accZ]
 
+    this._dominantFrequency = undefined;
     this._peaksIndex = undefined;
     this._troughsIndex = undefined;
   }
+  private _dominantFrequency?: number;
+
+  get dominantFrequency() {
+    if (this._dominantFrequency == undefined) {
+      const fftResult = new FourierTransform();
+      fftResult.fft(this.observations);
+      this._dominantFrequency = fftResult.getDominantFrequency();
+    }
+    return this._dominantFrequency;
+  }
 
   public applyHighPassFilter() {
-    const observations = this.result.flat();
-    const fftResult = new FourierTransform();
-    fftResult.fft(observations);
-
-    const hpFilter = new HighPassFilter(0.9 * fftResult.getDominantFrequency());
+    const hpFilter = new HighPassFilter(0.9 * this.dominantFrequency);
     let hpObservations = [];
-    for (let i = 0; i < observations.length; i++) {
-      hpObservations.push([hpFilter.filter(observations[i])]);
+    for (let i = 0; i < this.observations.length; i++) {
+      hpObservations.push([hpFilter.filter(this.observations[i])]);
     }
     this.result = hpObservations; // [accZ]
   }
