@@ -25,7 +25,15 @@ import AnimatedText from "./AnimatedText";
 
 const PADDING = 16;
 
-const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
+const FrequencyChart = ({
+  points,
+  peaks = [],
+  troughs = [],
+}: {
+  points: DataPoint[];
+  peaks?: DataPoint[];
+  troughs?: DataPoint[];
+}) => {
   const [scale, setScale] = useState(1);
   const output = useSharedValue(-1);
   const [yOrigin, setYOrigin] = useState(-1);
@@ -78,6 +86,23 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
     () => buildPath(points),
     [points, contentSize.value.width]
   ); // should not listen to a shared value like that
+
+  const buildCircles = (data: DataPoint[]) => {
+    return data.map((pt) => ({
+      cx: xScale(pt.date),
+      cy: yScale(pt.value),
+    }));
+  };
+
+  const peakCircles = useMemo(
+    () => buildCircles(peaks),
+    [peaks, contentSize.value.width]
+  );
+
+  const troughCircles = useMemo(
+    () => buildCircles(troughs),
+    [troughs, contentSize.value.width]
+  );
 
   const getYForX = (x: number) => {
     "worklet";
@@ -160,6 +185,12 @@ const FrequencyChart = ({ points }: { points: DataPoint[] }) => {
               <Path path={path} style="stroke" strokeWidth={3}>
                 <ColorShader color="lightBlue" />
               </Path>
+              {peakCircles.map(({ cx, cy }, index) => (
+                <Circle key={index} cx={cx} cy={cy} r={3} color="red" />
+              ))}
+              {troughCircles.map(({ cx, cy }, index) => (
+                <Circle key={index} cx={cx} cy={cy} r={3} color="yellow" />
+              ))}
             </Group>
             <Circle
               cx={canvasSize.value.width / 2}

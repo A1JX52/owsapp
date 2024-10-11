@@ -117,11 +117,17 @@ const DataList = () => {
   }, [allItems]);
 
   const accPoints = useMemo(() => accProcessor.getHeights(), [accProcessor]);
+  const accPeaks = useMemo(() => accProcessor.peaks, [accProcessor]);
+  const accTroughs = useMemo(() => accProcessor.troughs, [accProcessor]);
 
   return (
     <View style={{ flex: 1 }}>
       <LocationMap />
-      <FrequencyChart points={accPoints} />
+      <FrequencyChart
+        points={accPoints}
+        peaks={accPeaks}
+        troughs={accTroughs}
+      />
       <FrequencyChart points={frequencyPoints} />
       <Button
         title="scroll to end"
