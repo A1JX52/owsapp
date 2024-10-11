@@ -1,5 +1,5 @@
 const { KalmanFilter } = require("kalman-filter");
-import { diag, mean, multiply, subtract } from "mathjs";
+import { diag, median, multiply, subtract } from "mathjs";
 
 class WaveHeightFilter {
   static dT = 0.01;
@@ -10,10 +10,10 @@ class WaveHeightFilter {
   ]; // one single integration for each to only apply the difference in acceleration
   private index = 0;
 
-  private mean;
+  private median;
 
   constructor(private observations: number[][]) {
-    this.mean = mean(observations);
+    this.median = median(observations);
   }
 
   private kFilter = new KalmanFilter({
@@ -37,7 +37,7 @@ class WaveHeightFilter {
       constant: ({ previousCorrected }: any) => {
         // transforms the predicted state to the actual output state [cumsum, position, velocity]
         // use global index because only 'k-1' is provided
-        const u = subtract(this.observations[this.index][0], this.mean);
+        const u = subtract(this.observations[this.index][0], this.median);
         this.index++;
         const result = multiply(this.B, u);
         return result;
