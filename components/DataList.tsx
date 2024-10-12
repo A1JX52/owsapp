@@ -116,7 +116,7 @@ const DataList = () => {
     accSetProcessor(accProcessor.clone());
   }, [allItems]);
 
-  const accPoints = useMemo(() => accProcessor.getHeights(), [accProcessor]);
+  const accPoints = useMemo(() => accProcessor.positions(), [accProcessor]);
   const accPeaks = useMemo(() => accProcessor.peaks, [accProcessor]);
   const accTroughs = useMemo(() => accProcessor.troughs, [accProcessor]);
 

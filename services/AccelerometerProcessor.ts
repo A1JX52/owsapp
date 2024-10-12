@@ -47,7 +47,7 @@ class AccelerometerProcessor {
     this.result = new WaveHeightFilter(this.result).filterAll(); // [cumsum, position, velocity]
   }
 
-  public getHeights(threshold = 0): DataPoint[] {
+  positions(threshold = 0): DataPoint[] {
     if (!threshold || threshold >= this.result.length) {
       return this.result.map(([cumsum, position, velocity], index) => ({
         date: index * WaveHeightFilter.dT,
@@ -111,7 +111,7 @@ class AccelerometerProcessor {
     }));
   }
 
-  get meanWaveHeight() {
+  get meanPositionDisplacement() {
     const peakMean = mean(
       this.peaksIndex.map((index) => this.result[index][1])
     );
