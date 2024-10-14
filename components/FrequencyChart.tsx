@@ -29,10 +29,12 @@ const FrequencyChart = ({
   points,
   peaks = [],
   troughs = [],
+  additionalPoints = [],
 }: {
   points: DataPoint[];
   peaks?: DataPoint[];
   troughs?: DataPoint[];
+  additionalPoints?: DataPoint[];
 }) => {
   const [scale, setScale] = useState(1);
   const output = useSharedValue(-1);
@@ -86,6 +88,11 @@ const FrequencyChart = ({
     () => buildPath(points),
     [points, contentSize.value.width]
   ); // should not listen to a shared value like that
+
+  const additionalPath = useMemo(
+    () => buildPath(additionalPoints),
+    [additionalPoints, contentSize.value.width]
+  );
 
   const buildCircles = (data: DataPoint[]) => {
     return data.map((pt) => ({
@@ -181,6 +188,9 @@ const FrequencyChart = ({
                 strokeWidth={2}
               >
                 <DashPathEffect intervals={[6, 6]} />
+              </Path>
+              <Path path={additionalPath} style="stroke" strokeWidth={3}>
+                <ColorShader color="lightPink" />
               </Path>
               <Path path={path} style="stroke" strokeWidth={3}>
                 <ColorShader color="lightBlue" />
