@@ -120,6 +120,25 @@ class AccelerometerProcessor {
     );
     return -troughMean + peakMean;
   }
+
+  public shortTimeDivision(
+    windowSize: number,
+    hopSize: number
+  ): AccelerometerProcessor[] {
+    const numSegments =
+      Math.ceil((this.result.length - windowSize) / hopSize) + 1;
+    const processors: AccelerometerProcessor[] = [];
+
+    for (let i = 0; i < numSegments; i++) {
+      const processor = new AccelerometerProcessor();
+      const start = i * hopSize;
+      const end = i * hopSize + windowSize;
+      processor.observations = this.observations.slice(start, end);
+      processor.result = this.result.slice(start, end);
+      processors.push(processor);
+    }
+    return processors;
+  }
 }
 
 export default AccelerometerProcessor;
