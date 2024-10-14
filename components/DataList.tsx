@@ -110,7 +110,7 @@ const DataList = () => {
 
   useEffect(() => {
     if (!allItems.length) return;
-    accProcessor.reset(allItems);
+    accProcessor.reset(allItems.reverse());
     accProcessor.applyHighPassFilter();
     accProcessor.applyKalmanFilter();
     accSetProcessor(accProcessor.clone());
