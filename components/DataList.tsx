@@ -13,6 +13,7 @@ import DataListItem from "./DataListItem";
 import FrequencyChart from "./FrequencyChart";
 import LocationMap from "./LocationMap";
 import useAccelerometerProcessorStore from "../accelerometerProcessorStore";
+import WaveHeightFilter from "../services/WaveHeightFilter";
 
 const DataList = () => {
   const [loading, setLoading] = useState(false);
@@ -108,11 +109,28 @@ const DataList = () => {
     (state) => state.setProcessor
   );
 
+  const [additionalPoints, setAdditionalPoints] = useState<DataPoint[]>();
+
+  const buildAdditionalPoints = () => {
+    const processors = accProcessor.shortTimeDivision(250, 250);
+    processors.forEach((processor) =>
+      console.log(`period: ${1 / processor.dominantFrequency}`)
+    );
+    const additionalPoints: DataPoint[] = processors.flatMap(
+      (processor) => processor.dominantFrequencyPositions
+    );
+    additionalPoints.forEach(
+      (pt, index) => (pt.date = index * WaveHeightFilter.dT)
+    );
+    setAdditionalPoints(additionalPoints);
+  };
+
   useEffect(() => {
     if (!allItems.length) return;
     accProcessor.reset(allItems.reverse());
     accProcessor.applyHighPassFilter();
     accProcessor.applyKalmanFilter();
+    buildAdditionalPoints();
     accSetProcessor(accProcessor.clone());
   }, [allItems]);
 
@@ -127,6 +145,7 @@ const DataList = () => {
         points={accPoints}
         peaks={accPeaks}
         troughs={accTroughs}
+        additionalPoints={additionalPoints}
       />
       <FrequencyChart points={frequencyPoints} />
       <Button

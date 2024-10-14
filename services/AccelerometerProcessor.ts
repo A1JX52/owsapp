@@ -23,15 +23,25 @@ class AccelerometerProcessor {
     this._peaksIndex = undefined;
     this._troughsIndex = undefined;
   }
+  private _fftResult?: FourierTransform;
   private _dominantFrequency?: number;
 
   get dominantFrequency() {
     if (this._dominantFrequency == undefined) {
       const fftResult = new FourierTransform();
       fftResult.fft(this.observations);
+      this._fftResult = fftResult;
       this._dominantFrequency = fftResult.getDominantFrequency();
     }
     return this._dominantFrequency;
+  }
+
+  get dominantFrequencyPositions(): DataPoint[] {
+    this.dominantFrequency; // ifft() requires getDominantFrequency() to be executed first
+    return this._fftResult!.ifft().map((complex, index) => ({
+      date: index * WaveHeightFilter.dT,
+      value: complex.re,
+    }));
   }
 
   public applyHighPassFilter() {
